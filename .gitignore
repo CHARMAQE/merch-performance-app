@@ -1,7 +1,22 @@
-.DS_Store
-node_modules/
-target/
-.metals/
-.bloop/
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Java
+backend/target/
+
+# Node
+frontend/node_modules/
+
+# IDE
 .vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs / debug
 *.log
