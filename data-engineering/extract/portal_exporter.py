@@ -13,7 +13,7 @@ PORTAL_PASS = os.getenv("PORTAL_PASS", "")
 PORTAL_ENTITY = os.getenv("PORTAL_ENTITY", "Morocco Unilever").strip()
 
 DOWNLOAD_DIR = Path(
-    os.getenv("UNILEVER_INBOUND_DIR", r"C:\Users\hamza\CHARMAQE\Unilever\inbound")
+    os.getenv("UNILEVER_INBOUND_DIR", r"/Users/hamzacharmaqe/Documents/Unilever/inbound/April")
 )
 
 HEADLESS = os.getenv("PORTAL_HEADLESS", "false").lower() in {"1", "true", "yes", "y"}

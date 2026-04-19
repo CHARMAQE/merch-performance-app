@@ -9,8 +9,9 @@ RULE_CODE = "OSA_UNUSUAL_NON_BY_BANNER"
 def _banner_case_sql() -> str:
     return """
     CASE
-        WHEN UPPER(s.store_name) LIKE 'MARJANE%' THEN 'MARJANE'
         WHEN UPPER(s.store_name) LIKE 'MARJANE MARKET%' THEN 'MARJANE MARKET'
+        WHEN UPPER(s.store_name) LIKE 'MARJANE%' THEN 'MARJANE'
+        WHEN UPPER(s.store_name) LIKE 'CARREFOUR MARKET%' THEN 'CARREFOUR MARKET'
         WHEN UPPER(s.store_name) LIKE 'CARREFOUR%' THEN 'CARREFOUR'
         WHEN UPPER(s.store_name) LIKE 'ATACADAO%' THEN 'ATACADAO'
         WHEN UPPER(s.store_name) LIKE 'BIM%' THEN 'BIM'
@@ -68,7 +69,7 @@ def run_osa_unusual_non_validation(run_id: int) -> int:
             banner,
             product_code,
             question
-        HAVING COUNT(*) >= 5
+        HAVING COUNT(*) >= 10
     )
     SELECT
         b.visit_id,
@@ -90,7 +91,7 @@ def run_osa_unusual_non_validation(run_id: int) -> int:
      AND b.product_code = w.product_code
      AND b.question = w.question
     WHERE b.response = 'Non'
-      AND w.availability_rate >= 60
+      AND w.availability_rate >= 80
     """
 
     cursor.execute(query)
@@ -130,7 +131,10 @@ def run_osa_unusual_non_validation(run_id: int) -> int:
     """
 
     for row in rows:
-        severity = "HIGH" if row["availability_rate"] >= 80 else "MEDIUM"
+        if row["availability_rate"] >= 90:
+            severity = "HIGH"
+        else:
+            severity = "MEDIUM"
 
         context_json = (
             "{"
