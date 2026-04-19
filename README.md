@@ -18,7 +18,6 @@ The goal of the project is to build a **data-driven retail execution monitoring 
 
 The project aims to:
 
-- automate the extraction of field execution data from the Smollan portal
 - transform and load the exported Excel data into a structured MySQL database
 - organize operational data by visits, stores, products, and business task families
 - add a validation layer to detect suspicious or inconsistent OSA responses
