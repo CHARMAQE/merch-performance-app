@@ -1,3 +1,4 @@
+-- Active: 1776577465055@@127.0.0.1@3306@unilever_db
 CREATE TABLE IF NOT EXISTS validation_rules (
     rule_id INT AUTO_INCREMENT PRIMARY KEY,
     rule_code VARCHAR(100) NOT NULL UNIQUE,
