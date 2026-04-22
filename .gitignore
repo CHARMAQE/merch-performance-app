@@ -21,10 +21,15 @@ Thumbs.db
 # Logs / debug
 *.log
 
-```gitignore
 data-engineering/debug_failure.html
 data-engineering/debug_failure.png
 data-engineering/debug_timeout.html
 data-engineering/debug_timeout.png
 data-engineering/debug_timeout_export.html
 data-engineering/debug_timeout_export.png
+
+# Local secrets
+data-engineering/.env
+
+# Optional local downloads
+data-engineering/downloads/

@@ -1,13 +1,8 @@
--- Active: 1776577465055@@127.0.0.1@3306@unilever_db
--- ============================================
--- SMOLLAN TASKS DATABASE - SCHEMA
--- ============================================
-
 CREATE DATABASE IF NOT EXISTS unilever_db;
 USE unilever_db;
 
 -- ============================================
--- BASE TABLES
+-- CORE TABLES
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS employees (
@@ -50,56 +45,82 @@ CREATE TABLE IF NOT EXISTS visits (
     FOREIGN KEY (store_id) REFERENCES stores(store_id)
 );
 
--- ============================================
--- TASK TABLES ARE CREATED BY python.py
--- Each question becomes a column header
--- Responses fill the rows per visit
--- ============================================
-
--- Full Reset
-
--- DROP DATABASE IF EXISTS unilever_db;
-
-
--- Check duplicates by visit key in SQL:
-
--- SELECT v.visit_date, e.employee_code, s.store_code, COUNT(*) cnt
--- FROM visits v
--- JOIN employees e ON e.employee_id = v.employee_id
--- JOIN stores s ON s.store_id = v.store_id
--- GROUP BY v.visit_date, e.employee_code, s.store_code
--- HAVING COUNT(*) > 1;
-
--- ============================================
--- ETL FILE REGISTRY
--- ============================================
-
-CREATE TABLE IF NOT EXISTS etl_file_registry (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    file_name VARCHAR(255) NOT NULL,
-    file_hash CHAR(64) NOT NULL,
-    file_size BIGINT NULL,
-    file_modified_at DATETIME NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING|SUCCESS|FAILED
-    loaded_at DATETIME NULL,
-    error_message TEXT NULL,
-    UNIQUE KEY uk_file_hash (file_hash)
+CREATE TABLE IF NOT EXISTS survey_responses (
+    response_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    visit_id INT NOT NULL,
+    employee_code VARCHAR(50) NOT NULL,
+    store_code VARCHAR(50) NOT NULL,
+    product_code VARCHAR(50) NULL,
+    task VARCHAR(255) NULL,
+    title VARCHAR(255) NULL,
+    question TEXT NOT NULL,
+    response TEXT NULL,
+    response_datetime DATETIME NULL,
+    latitude DECIMAL(10,6) NULL,
+    longitude DECIMAL(10,6) NULL,
+    KEY idx_survey_visit (visit_id),
+    KEY idx_survey_employee (employee_code),
+    KEY idx_survey_store (store_code),
+    KEY idx_survey_product (product_code),
+    KEY idx_survey_response_datetime (response_datetime),
+    CONSTRAINT fk_survey_visit
+        FOREIGN KEY (visit_id) REFERENCES visits(visit_id)
 );
 
 -- ============================================
--- ETL RUN LOG
+-- VALIDATION TABLES
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS etl_run_log (
+-- DROP TABLE IF EXISTS validation_results;
+
+
+ALTER TABLE validation_results
+ADD COLUMN validation_id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST;
+
+
+CREATE TABLE validation_results (
+    validation_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    rule_code VARCHAR(100) NOT NULL,
+    visit_id INT NULL,
+    store_code VARCHAR(50) NULL,
+    employee_code VARCHAR(50) NULL,
+    product_code VARCHAR(50) NULL,
+    banner VARCHAR(100) NULL,
+    detected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    question TEXT NULL,
+    response TEXT NULL,
+    message TEXT NOT NULL,
+    no_count INT NULL,
+    yes_count INT NULL,
+    total_answers INT NULL,
+    availability_rate DECIMAL(5,2) NULL,
+    INDEX idx_rule_code (rule_code),
+    INDEX idx_visit_id (visit_id),
+    INDEX idx_store_code (store_code),
+    INDEX idx_employee_code (employee_code),
+    INDEX idx_product_code (product_code),
+    INDEX idx_banner (banner),
+    INDEX idx_detected_at (detected_at)
+);
+
+
+SHOW COLUMNS FROM validation_results;
+-- ============================================
+-- LOGS FOR VALIDATION TABLES
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS validation_run_log (
     run_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     started_at DATETIME NOT NULL,
     finished_at DATETIME NULL,
-    status VARCHAR(20) NOT NULL, -- RUNNING|SUCCESS|FAILED
-    source_file VARCHAR(255) NULL,
-    rows_loaded INT NULL,
-    employees_loaded INT NULL,
-    stores_loaded INT NULL,
-    products_loaded INT NULL,
-    visits_loaded INT NULL,
+    status VARCHAR(20) NOT NULL,
+    rules_executed INT NULL,
+    issues_found INT NULL,
     error_message TEXT NULL
 );
+
+-- ============================================
+-- NOTE
+-- ============================================
+-- task_* tables are created dynamically by the ETL.
+-- They are not created here on purpose.

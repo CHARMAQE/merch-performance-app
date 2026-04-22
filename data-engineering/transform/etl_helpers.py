@@ -18,6 +18,14 @@ def clean_float(value):
         return None
 
 
+def to_sql_value(value):
+    if pd.isna(value):
+        return None
+    if isinstance(value, pd.Timestamp):
+        return value.to_pydatetime()
+    return value
+
+
 def question_to_column(question_text):
     """Convert a question string into a valid MySQL column name."""
     col = str(question_text).strip().lower()

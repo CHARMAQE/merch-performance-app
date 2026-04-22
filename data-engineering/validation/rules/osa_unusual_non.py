@@ -9,19 +9,24 @@ RULE_CODE = "OSA_UNUSUAL_NON_BY_BANNER"
 def _banner_case_sql() -> str:
     return """
     CASE
-        WHEN UPPER(s.store_name) LIKE 'MARJANE MARKET%' THEN 'MARJANE MARKET'
-        WHEN UPPER(s.store_name) LIKE 'MARJANE%' THEN 'MARJANE'
-        WHEN UPPER(s.store_name) LIKE 'CARREFOUR MARKET%' THEN 'CARREFOUR MARKET'
-        WHEN UPPER(s.store_name) LIKE 'CARREFOUR%' THEN 'CARREFOUR'
-        WHEN UPPER(s.store_name) LIKE 'ATACADAO%' THEN 'ATACADAO'
-        WHEN UPPER(s.store_name) LIKE 'BIM%' THEN 'BIM'
-        WHEN UPPER(s.store_name) LIKE 'ASWAK ASSALAM%' THEN 'ASWAK ASSALAM'
+        WHEN UPPER(TRIM(s.store_name)) LIKE 'MARJANE MARKET%' THEN 'MARJANE MARKET'
+        WHEN UPPER(TRIM(s.store_name)) LIKE 'ACIMA%' THEN 'MARJANE MARKET'
+        WHEN UPPER(TRIM(s.store_name)) LIKE 'MARJANE%' THEN 'MARJANE'
+
+        WHEN UPPER(TRIM(s.store_name)) LIKE 'CARREFOUR MARKET%' THEN 'CARREFOUR MARKET'
+        WHEN UPPER(TRIM(s.store_name)) LIKE 'CARREFOUR%' THEN 'CARREFOUR'
+
+        WHEN UPPER(TRIM(s.store_name)) LIKE 'ATACADAO%' THEN 'ATACADAO'
+        WHEN UPPER(TRIM(s.store_name)) LIKE 'ATTACADAO%' THEN 'ATACADAO'
+
+        WHEN UPPER(TRIM(s.store_name)) LIKE 'ASWAK ASSALAM%' THEN 'ASWAK ASSALAM'
+        
         ELSE 'OTHER'
     END
     """
 
 
-def run_osa_unusual_non_validation(run_id: int) -> int:
+def run_osa_unusual_non_validation(_run_id: int) -> int:
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
 
@@ -70,6 +75,7 @@ def run_osa_unusual_non_validation(run_id: int) -> int:
             product_code,
             question
         HAVING COUNT(*) >= 10
+            AND SUM(CASE WHEN response = 'Oui' THEN 1 ELSE 0 END) >= 8
     )
     SELECT
         b.visit_id,
@@ -101,66 +107,55 @@ def run_osa_unusual_non_validation(run_id: int) -> int:
 
     insert_sql = """
     INSERT INTO validation_results (
-        run_id,
         rule_code,
-        severity,
         visit_id,
-        employee_code,
         store_code,
+        employee_code,
         product_code,
         banner,
         question,
-        response_value,
-        issue_message,
-        context_json
+        response,
+        message,
+        no_count,
+        yes_count,
+        total_answers,
+        availability_rate
     )
     VALUES (
-        %(run_id)s,
         %(rule_code)s,
-        %(severity)s,
         %(visit_id)s,
-        %(employee_code)s,
         %(store_code)s,
+        %(employee_code)s,
         %(product_code)s,
         %(banner)s,
         %(question)s,
-        %(response_value)s,
-        %(issue_message)s,
-        %(context_json)s
+        %(response)s,
+        %(message)s,
+        %(no_count)s,
+        %(yes_count)s,
+        %(total_answers)s,
+        %(availability_rate)s
     )
     """
 
     for row in rows:
-        if row["availability_rate"] >= 90:
-            severity = "HIGH"
-        else:
-            severity = "MEDIUM"
-
-        context_json = (
-            "{"
-            f"\"total_answers\": {int(row['total_answers'])}, "
-            f"\"yes_count\": {int(row['yes_count'])}, "
-            f"\"no_count\": {int(row['no_count'])}, "
-            f"\"availability_rate\": {float(row['availability_rate'])}"
-            "}"
-        )
-
         payload = {
-            "run_id": run_id,
             "rule_code": RULE_CODE,
-            "severity": severity,
             "visit_id": row["visit_id"],
-            "employee_code": row["employee_code"],
             "store_code": row["store_code"],
+            "employee_code": row["employee_code"],
             "product_code": row["product_code"],
             "banner": row["banner"],
             "question": row["question"],
-            "response_value": row["response"],
-            "issue_message": (
+            "response": row["response"],
+            "message": (
                 f"OSA response is 'Non' while weekly availability for SKU {row['product_code']} "
                 f"in banner {row['banner']} is {row['availability_rate']}%."
             ),
-            "context_json": context_json,
+            "no_count": int(row["no_count"]),
+            "yes_count": int(row["yes_count"]),
+            "total_answers": int(row["total_answers"]),
+            "availability_rate": float(row["availability_rate"]),
         }
 
         cursor.execute(insert_sql, payload)
