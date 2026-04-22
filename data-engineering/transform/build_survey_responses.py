@@ -1,61 +1,97 @@
 import pandas as pd
-import mysql.connector
 
-from config.db_config import DB_CONFIG
-from transform.etl_helpers import clean_text, clean_float
+from transform.etl_helpers import clean_float, clean_text
 
 
-def build_survey_responses_dataframe(excel_file: str) -> pd.DataFrame:
-    df = pd.read_excel(excel_file)
-    df.columns = df.columns.str.strip().str.lower()
+SURVEY_RESPONSE_COLUMNS = [
+    "visit_id",
+    "employee_code",
+    "store_code",
+    "product_code",
+    "task",
+    "title",
+    "question",
+    "response",
+    "response_datetime",
+    "latitude",
+    "longitude",
+]
 
-    df["date"] = pd.to_datetime(df["dateid"].astype(str), format="%Y%m%d", errors="coerce")
-    df["responsedate"] = pd.to_datetime(
-        pd.to_numeric(df["responsedate"], errors="coerce"),
-        unit="D", origin="1899-12-30", errors="coerce"
+
+def build_survey_responses_dataframe(source_df: pd.DataFrame, visit_lookup_df: pd.DataFrame) -> pd.DataFrame:
+    if source_df is None or source_df.empty:
+        return pd.DataFrame(columns=SURVEY_RESPONSE_COLUMNS)
+
+    df = source_df.copy()
+
+    if "storeformat" in df.columns:
+        df = df[
+            ~df["storeformat"]
+            .astype(str)
+            .str.strip()
+            .str.upper()
+            .isin(["GROCERY", "ICE CREAM"])
+        ].copy()
+
+    if "date" in df.columns:
+        df["visit_date"] = pd.to_datetime(df["date"], errors="coerce").dt.date
+    else:
+        df["visit_date"] = pd.to_datetime(
+            df["dateid"].astype(str),
+            format="%Y%m%d",
+            errors="coerce",
+        ).dt.date
+
+    df["response_datetime"] = pd.to_datetime(
+        df["responsedate"],
+        errors="coerce",
+    ).dt.round("s")
+
+    df["employee_code"] = df["employeecode"].apply(clean_text)
+    df["store_code"] = df["storecode"].apply(clean_text)
+    df["product_code"] = df["productcode"].apply(clean_text)
+    df["task"] = df["task"].apply(clean_text)
+    df["title"] = df["title"].apply(clean_text)
+    df["question"] = df["question"].apply(clean_text)
+    df["response"] = df["response"].apply(clean_text)
+    df["latitude"] = df["latitude"].apply(clean_float)
+    df["longitude"] = df["longitude"].apply(clean_float)
+
+    if visit_lookup_df is None or visit_lookup_df.empty:
+        return pd.DataFrame(columns=SURVEY_RESPONSE_COLUMNS)
+
+    visit_lookup_df = visit_lookup_df.copy()
+    visit_lookup_df["visit_date"] = pd.to_datetime(
+        visit_lookup_df["visit_date"],
+        errors="coerce",
+    ).dt.date
+    visit_lookup_df["employee_code"] = visit_lookup_df["employee_code"].apply(clean_text)
+    visit_lookup_df["store_code"] = visit_lookup_df["store_code"].apply(clean_text)
+
+    merged = df.merge(
+        visit_lookup_df[["visit_id", "visit_date", "employee_code", "store_code"]],
+        how="left",
+        on=["visit_date", "employee_code", "store_code"],
     )
 
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT v.visit_id, v.visit_date, e.employee_code, s.store_code
-        FROM visits v
-        JOIN employees e ON e.employee_id = v.employee_id
-        JOIN stores s ON s.store_id = v.store_id
-    """)
-    visit_rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
-
-    visit_map = {
-        (str(visit_date), employee_code, store_code): visit_id
-        for visit_id, visit_date, employee_code, store_code in visit_rows
-    }
-
-    df["visit_id"] = df.apply(
-        lambda r: visit_map.get((
-            str(r["date"].date()) if pd.notna(r["date"]) else None,
-            clean_text(r["employeecode"]),
-            clean_text(r["storecode"])
-        )),
-        axis=1
-    )
-
-    out = pd.DataFrame({
-        "visit_id": df["visit_id"],
-        "employee_code": df["employeecode"].apply(clean_text),
-        "store_code": df["storecode"].apply(clean_text),
-        "product_code": df["productcode"].apply(clean_text),
-        "task": df["task"].apply(clean_text),
-        "title": df["title"].apply(clean_text),
-        "question": df["question"].apply(clean_text),
-        "response": df["response"].apply(clean_text),
-        "response_datetime": df["responsedate"],
-        "latitude": df["latitude"].apply(clean_float),
-        "longitude": df["longitude"].apply(clean_float),
-    })
+    out = merged[
+        [
+            "visit_id",
+            "employee_code",
+            "store_code",
+            "product_code",
+            "task",
+            "title",
+            "question",
+            "response",
+            "response_datetime",
+            "latitude",
+            "longitude",
+        ]
+    ].copy()
 
     out = out[out["visit_id"].notna()].copy()
     out = out.where(pd.notna(out), None)
+    out = out.reset_index(drop=True)
+
     return out

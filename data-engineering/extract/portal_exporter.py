@@ -1,20 +1,21 @@
 import os
 import re
 import time
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 from playwright.sync_api import Playwright, TimeoutError as PWTimeout, sync_playwright
 
+from config.env_loader import load_project_env
 
+
+load_project_env()
 PORTAL_URL = os.getenv("PORTAL_URL", "https://smartmanagement.smollan.com/#/login")
 PORTAL_USER = os.getenv("PORTAL_USER", "")
 PORTAL_PASS = os.getenv("PORTAL_PASS", "")
 PORTAL_ENTITY = os.getenv("PORTAL_ENTITY", "Morocco Unilever").strip()
 
-DOWNLOAD_DIR = Path(
-    os.getenv("UNILEVER_INBOUND_DIR", r"/Users/hamzacharmaqe/Documents/Unilever/inbound/April")
-)
+DEFAULT_DOWNLOAD_DIR = Path(__file__).resolve().parents[1] / "downloads"
 
 HEADLESS = os.getenv("PORTAL_HEADLESS", "false").lower() in {"1", "true", "yes", "y"}
 SLOW_MO_MS = int(os.getenv("PORTAL_SLOW_MO_MS", "250"))
@@ -22,11 +23,23 @@ DEFAULT_TIMEOUT_MS = int(os.getenv("PORTAL_TIMEOUT_MS", "30000"))
 EXPORT_TIMEOUT_MS = int(os.getenv("PORTAL_EXPORT_TIMEOUT_MS", "300000"))
 
 
+def resolve_download_dir(download_dir=None) -> Path:
+    if download_dir:
+        return Path(download_dir).expanduser().resolve()
+
+    env_dir = os.getenv("UNILEVER_DOWNLOAD_DIR") or os.getenv("UNILEVER_INBOUND_DIR")
+    if env_dir:
+        return Path(env_dir).expanduser().resolve()
+
+    return DEFAULT_DOWNLOAD_DIR
+
+
 def debug_dump(page, name: str) -> None:
     try:
         page.screenshot(path=f"{name}.png", full_page=True)
     except Exception:
         pass
+
     try:
         with open(f"{name}.html", "w", encoding="utf-8") as f:
             f.write(page.content())
@@ -36,6 +49,7 @@ def debug_dump(page, name: str) -> None:
 
 def find_first_visible(locators, timeout=15000):
     end = time.time() + (timeout / 1000)
+
     while time.time() < end:
         for loc in locators:
             try:
@@ -44,6 +58,7 @@ def find_first_visible(locators, timeout=15000):
             except Exception:
                 pass
         time.sleep(0.25)
+
     raise RuntimeError("No expected element became visible.")
 
 
@@ -54,6 +69,7 @@ def safe_click(locator, timeout=10000):
 
 def wait_overlay_gone(page, timeout=30000):
     end = time.time() + (timeout / 1000)
+
     while time.time() < end:
         try:
             loading = page.locator(".ngx-spinner-overlay:visible").count()
@@ -64,14 +80,16 @@ def wait_overlay_gone(page, timeout=30000):
                 return
         except Exception:
             return
+
         page.wait_for_timeout(250)
 
 
-def run(playwright: Playwright) -> str:
+def run(playwright: Playwright, download_dir=None) -> str:
     if not PORTAL_USER or not PORTAL_PASS:
         raise RuntimeError("Missing PORTAL_USER or PORTAL_PASS environment variables.")
 
-    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    resolved_download_dir = resolve_download_dir(download_dir)
+    resolved_download_dir.mkdir(parents=True, exist_ok=True)
 
     browser = playwright.chromium.launch(headless=HEADLESS, slow_mo=SLOW_MO_MS)
     context = browser.new_context(accept_downloads=True)
@@ -79,7 +97,6 @@ def run(playwright: Playwright) -> str:
     page.set_default_timeout(DEFAULT_TIMEOUT_MS)
 
     try:
-        # 1) Login
         page.goto(PORTAL_URL, wait_until="domcontentloaded")
 
         user_input = find_first_visible(
@@ -110,7 +127,6 @@ def run(playwright: Playwright) -> str:
         safe_click(login_btn, timeout=5000)
         wait_overlay_gone(page, timeout=30000)
 
-        # 2) Open three-dots user menu, then find Change Entity from the opened menu
         more_btn = find_first_visible(
             [
                 page.locator("app-user-profile-new mat-icon", has_text="more_vert"),
@@ -143,14 +159,10 @@ def run(playwright: Playwright) -> str:
 
         safe_click(change_entity, timeout=5000)
 
-        # 3) Ensure Change Entity modal is open
         find_first_visible(
             [page.get_by_text(re.compile(r"^\s*Change Entity\s*$", re.I))],
             timeout=10000,
         )
-
-        # 4) Open Select Entity dropdown first, then choose entity
-        find_first_visible([page.get_by_text(re.compile(r"^\s*Change Entity\s*$", re.I))], timeout=10000)
 
         entity_select = find_first_visible(
             [
@@ -187,7 +199,6 @@ def run(playwright: Playwright) -> str:
         safe_click(done_btn, timeout=5000)
         wait_overlay_gone(page, timeout=20000)
 
-        # 5) Click Report and confirm page is really open
         report_item = find_first_visible(
             [
                 page.locator("li.list-group-item").filter(has_text=re.compile(r"^\s*Report\s*$", re.I)),
@@ -196,7 +207,6 @@ def run(playwright: Playwright) -> str:
             timeout=20000,
         )
 
-        # Detect empty report result early (instead of timing out on row search)
         if page.get_by_text(re.compile(r"No Rows To Show", re.I)).count() > 0:
             current_entity = page.locator("app-user-profile-new .project-name").first.inner_text().strip()
             raise RuntimeError(f"Reports grid is empty for entity: {current_entity}")
@@ -217,7 +227,6 @@ def run(playwright: Playwright) -> str:
         except Exception:
             pass
 
-        # 6) Click Data Dump Report row action (eye/button)
         row_pattern = re.compile(r"Data\s*Dump\s*-?\s*Report", re.I)
         row = find_first_visible(
             [
@@ -239,7 +248,6 @@ def run(playwright: Playwright) -> str:
         safe_click(row_action, timeout=5000)
         wait_overlay_gone(page, timeout=30000)
 
-                # 7) Click + Export report and download
         export_btn = find_first_visible(
             [
                 page.locator("a,button").filter(has_text=re.compile(r"\+?\s*Export\s*report", re.I)),
@@ -252,7 +260,7 @@ def run(playwright: Playwright) -> str:
         download = None
         last_error = None
 
-        for attempt in range(2):
+        for _ in range(2):
             try:
                 with page.expect_download(timeout=EXPORT_TIMEOUT_MS) as download_info:
                     safe_click(export_btn, timeout=10000)
@@ -267,22 +275,17 @@ def run(playwright: Playwright) -> str:
             debug_dump(page, "debug_timeout_export")
             raise RuntimeError(f"Export click succeeded but no download started: {last_error}")
 
-        download = download_info.value
-
         now = datetime.now()
-        month_name = now.strftime("%B")  # April, May, June...
-        month_dir = DOWNLOAD_DIR / month_name
+        month_dir = resolved_download_dir / now.strftime("%B")
         month_dir.mkdir(parents=True, exist_ok=True)
 
         base_name = f"UL__Data_Dump-{now.strftime('%d-%b').upper()}"
         target_file = month_dir / f"{base_name}.xlsx"
 
-        # Avoid overwrite if same-day file already exists
         if target_file.exists():
             target_file = month_dir / f"{base_name}-{now.strftime('%H%M%S')}.xlsx"
 
         download.save_as(str(target_file))
-
         return str(target_file)
 
     except PWTimeout as exc:
@@ -296,7 +299,11 @@ def run(playwright: Playwright) -> str:
         browser.close()
 
 
-if __name__ == "__main__":
+def download_excel_from_portal(download_dir=None) -> str:
     with sync_playwright() as playwright:
-        out = run(playwright)
+        return run(playwright, download_dir=download_dir)
+
+
+if __name__ == "__main__":
+    out = download_excel_from_portal()
     print(f"Downloaded: {out}")
