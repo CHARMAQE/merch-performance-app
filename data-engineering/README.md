@@ -1,166 +1,253 @@
 # Data Engineering Pipeline
 
-## Overview
+This folder contains the Python data engineering workflow for the Merch Performance project.
 
-This folder contains the full data engineering workflow for the Merch Performance project.
-
-Its responsibilities are:
-
-- optionally download the latest Excel export from the Smollan portal
-- read the Excel file once into memory
-- transform the data into base tables and dynamic task tables
-- load the transformed data into MySQL
-- build and load the `survey_responses` analytical table
-- run validation rules on the loaded data
+It is responsible for extracting Excel data, transforming it, loading MySQL tables, building the normalized analytics layer, and running validation rules.
 
 ## Current Flow
 
-### Main run
+Main command from the repository root:
 
-Run:
-
-```powershell
-python .\data-engineering\main.py
+```bash
+python data-engineering/main.py
 ```
 
-The current flow is:
+The run does this:
 
-1. Choose a source:
+1. Ask for the source type:
    - local Excel file
    - automatic portal download
-2. Read the Excel file once with `prepare_source_dataframe`
-3. Run the core ETL for:
+2. Read the Excel file into a pandas dataframe.
+3. Build base table dataframes:
    - employees
    - stores
    - products
    - visits
-   - dynamic task tables
-4. Build `survey_responses`
-5. Load `survey_responses`
-6. Run validation rules
-
-### Optional portal extraction
-
-If you choose portal download in `main.py`, the project uses:
-
-- `extract/portal_exporter.py`
-
-This file logs into the portal, exports the Excel file, and stores it locally before the ETL continues.
+4. Load base tables into MySQL.
+5. Detect task rows and map them to dynamic `task_*` tables.
+6. Create or alter dynamic task tables as needed.
+7. Load task responses.
+8. Build `survey_responses`.
+9. Load `survey_responses`.
+10. Run database validation rules.
 
 ## Folder Structure
 
 ```text
 data-engineering/
-├── .env
 ├── config/
 │   ├── db_config.py
-│   ├── env_loader.py
-│   └── __init__.py
+│   └── env_loader.py
 ├── extract/
-│   ├── portal_exporter.py
-│   └── __init__.py
+│   └── portal_exporter.py
 ├── load/
 │   ├── load_base_tables.py
-│   ├── load_task_tables.py
 │   ├── load_survey_responses.py
-│   └── __init__.py
+│   └── load_task_tables.py
 ├── transform/
 │   ├── build_base_tables.py
-│   ├── build_task_tables.py
 │   ├── build_survey_responses.py
+│   ├── build_task_tables.py
 │   ├── etl_constants.py
 │   ├── etl_excel_to_mysql.py
-│   ├── etl_helpers.py
-│   └── __init__.py
+│   └── etl_helpers.py
 ├── validation/
 │   ├── engine/
-│   │   ├── validation_engine.py
-│   │   └── __init__.py
 │   ├── rules/
-│   │   ├── osa_unusual_non.py
-│   │   └── __init__.py
-│   ├── validation_runner.py
-│   └── __init__.py
+│   └── validation_runner.py
+├── .env
+├── .env.example
 ├── main.py
 └── README.md
 ```
 
-## File Roles
+## Configuration
 
-### `transform/`
+Local secrets live in:
 
-Contains transformation logic only.
+```text
+data-engineering/.env
+```
 
-Naming rule:
-- `build_*.py` prepares pandas DataFrames
+Create it from the example:
 
-Important files:
-- `build_base_tables.py`
-- `build_task_tables.py`
-- `build_survey_responses.py`
-- `etl_excel_to_mysql.py` as the ETL coordinator
+```bash
+cp data-engineering/.env.example data-engineering/.env
+```
 
-### `load/`
+Required database values:
 
-Contains MySQL load logic only.
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password_here
+DB_NAME=unilever_db
+```
 
-Naming rule:
-- `load_*.py` reads or writes database objects
+Portal download values:
 
-Important files:
-- `load_base_tables.py`
-- `load_task_tables.py`
-- `load_survey_responses.py`
+```env
+PORTAL_URL=https://smartmanagement.smollan.com/#/login
+PORTAL_USER=your_portal_user
+PORTAL_PASS=your_portal_password
+PORTAL_ENTITY=Morocco Unilever
+UNILEVER_DOWNLOAD_DIR=./data-engineering/downloads
+PORTAL_HEADLESS=false
+```
 
-### `validation/`
+Do not commit `.env`.
 
-Contains validation orchestration and rule implementations.
+## Important Files
+
+### `main.py`
+
+The current manual entrypoint.
+
+It coordinates:
+
+- source selection
+- Excel reading
+- core ETL
+- survey response build/load
+- validation run
+
+### `extract/portal_exporter.py`
+
+Uses Playwright to log into the Smollan portal and export the Excel report.
+
+If you use this path, install Playwright:
+
+```bash
+pip install playwright
+playwright install chromium
+```
+
+### `transform/build_base_tables.py`
+
+Builds clean pandas dataframes for:
+
+- `employees`
+- `stores`
+- `products`
+- `visits`
+
+### `transform/build_task_tables.py`
+
+Maps Excel task/title values to dynamic task table names.
+
+Examples:
+
+- `LOCATION CHECK IN` -> `task_location_checkin`
+- `CALLCYCLE DEVIATION` -> `task_callcycle_deviation`
+- titles containing `OSA`, `COC`, `MH`, or `PACK` -> `task_osa_pack_coc_mh`
+
+### `transform/etl_excel_to_mysql.py`
+
+Coordinates the core ETL.
+
+It loads:
+
+- base tables
+- visits
+- dynamic task tables
+
+### `load/load_task_tables.py`
+
+Creates and updates dynamic `task_*` table structures.
+
+It also pivots question/response rows into wide task-specific records.
+
+### `transform/build_survey_responses.py`
+
+Builds a normalized table shape from the Excel source.
+
+Output columns include:
+
+- `visit_id`
+- `employee_code`
+- `store_code`
+- `product_code`
+- `task`
+- `title`
+- `question`
+- `response`
+- `response_datetime`
+- `latitude`
+- `longitude`
+
+### `validation/validation_runner.py`
+
+Creates a validation run log, executes active validation rules, and records run status.
+
+### `validation/rules/osa_unusual_non.py`
 
 Current active rule:
-- `OSA_UNUSUAL_NON_BY_BANNER`
 
-### `config/`
+```text
+OSA_UNUSUAL_NON_BY_BANNER
+```
 
-Contains configuration helpers.
+This rule searches for suspicious `Non` OSA answers when weekly product/banner availability is mostly `Oui`.
 
-Important files:
-- `db_config.py` builds the MySQL config from environment variables
-- `env_loader.py` loads values from `data-engineering/.env`
+## Database Tables Used
 
-### `extract/`
+Base tables:
 
-Contains optional download automation for the Smollan portal.
+- `employees`
+- `stores`
+- `products`
+- `visits`
 
-Important file:
-- `portal_exporter.py`
+Analytics table:
 
-## Environment Setup
+- `survey_responses`
 
-The project uses:
+Validation tables:
 
-- `data-engineering/.env` for local secrets
+- `validation_results`
+- `validation_run_log`
 
-Typical values stored there:
+Dynamic task tables:
 
-- `DB_HOST`
-- `DB_PORT`
-- `DB_USER`
-- `DB_PASSWORD`
-- `DB_NAME`
-- `PORTAL_USER`
-- `PORTAL_PASS`
-- `PORTAL_ENTITY`
-- `UNILEVER_DOWNLOAD_DIR`
+- created by the ETL
+- dropped by `database/reset_data.sql`
+- not created directly in `database/schema.sql`
 
-This file is local only and should not be committed to GitHub.
+## Running The Pipeline
 
-## Design Rules
+From the repository root:
 
-The ETL now follows these rules:
+```bash
+python data-engineering/main.py
+```
 
-- read the Excel source once, then reuse the dataframe
-- keep transformation logic in `transform/`
-- keep SQL logic in `load/`
-- keep validation isolated in `validation/`
+For a local Excel file:
 
-That separation makes the project easier to debug, refactor, and extend.
+1. choose option `1`
+2. paste the Excel file path
+
+For portal download:
+
+1. choose option `2`
+2. make sure portal credentials exist in `.env`
+3. make sure Playwright is installed
+
+## Known Issues
+
+- `requirements.txt` is currently UTF-16 encoded; convert it to UTF-8 later.
+- `playwright` is required for portal download but is not currently listed in `requirements.txt`.
+- The ETL creates and alters task tables dynamically, so schema can change based on incoming questions.
+- Current validation execution is code-driven, not database-rule-driven.
+- There is no dedicated test suite yet for transformations or validation rules.
+
+## How To Continue
+
+Best next improvements:
+
+1. Add unit tests for `clean_text`, `question_to_column`, and dataframe builders.
+2. Add a small fixture Excel file for repeatable local testing.
+3. Make validation rules easier to register.
+4. Add a run log for manual ETL runs.
+5. Decide whether to keep dynamic task tables or replace them with more normalized reporting tables.
+6. Document each expected Excel column and what it maps to.
