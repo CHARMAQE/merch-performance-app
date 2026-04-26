@@ -1,4 +1,4 @@
--- Active: 1776681738854@@127.0.0.1@3306@unilever_db
+-- Active: 1776577465055@@127.0.0.1@3306@unilever_db
 SELECT COUNT(*) FROM employees;
 SELECT COUNT(*) FROM stores;
 SELECT COUNT(*) FROM products;
@@ -69,3 +69,9 @@ ORDER BY issue_count DESC;
 
 
 select DISTINCT(banner) from stores;
+
+
+SELECT *
+FROM validation_results
+WHERE rule_code = 'GPS_INCONSISTENT_CHECKIN_SAME_STORE_MONTH'
+ORDER BY detected_at DESC;
