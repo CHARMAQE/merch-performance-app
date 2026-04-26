@@ -1,3 +1,4 @@
+-- Active: 1776577465055@@127.0.0.1@3306@unilever_db
 CREATE DATABASE IF NOT EXISTS unilever_db;
 USE unilever_db;
 
@@ -74,8 +75,8 @@ CREATE TABLE IF NOT EXISTS survey_responses (
 -- DROP TABLE IF EXISTS validation_results;
 
 
-ALTER TABLE validation_results
-ADD COLUMN validation_id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST;
+-- ALTER TABLE validation_results
+-- ADD COLUMN validation_id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST;
 
 
 CREATE TABLE validation_results (
@@ -124,3 +125,4 @@ CREATE TABLE IF NOT EXISTS validation_run_log (
 -- ============================================
 -- task_* tables are created dynamically by the ETL.
 -- They are not created here on purpose.
+-- DROP DATABASE IF EXISTS unilever_db;
