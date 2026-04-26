@@ -1,98 +1,325 @@
 # Merch Performance App
 
-## Overview
+Merch Performance App is a full-stack project for processing Unilever/Smollan retail execution data.
 
-Merch Performance App is a workspace for loading, validating, and exposing Unilever retail execution data.
+The project takes exported field execution data from Excel, loads it into MySQL, runs validation logic, exposes selected data through a Spring Boot API, and displays early dashboard data in a React frontend.
 
-The repository currently contains three main parts:
+## Project Status
 
-- `data-engineering/` for Excel extraction, ETL, MySQL loading, and validation rules
-- `backend/` for the Spring Boot API layer
-- `frontend/` for the React user interface
+This project is currently a working development foundation, not a finished production app.
 
-The project goal is to transform exported field data into structured tables, build analytical layers such as `survey_responses`, and make the data available for validation, reporting, and future dashboard work.
+The strongest part of the project right now is the data engineering flow. The backend and frontend are still early, but they already connect to the same MySQL database and provide the beginning of a reporting/dashboard layer.
+
+## Main Architecture
+
+```text
+Excel export
+  -> Python data engineering pipeline
+  -> MySQL database
+  -> validation rules
+  -> Spring Boot backend API
+  -> React frontend dashboard
+```
 
 ## Repository Structure
 
 ```text
 merch-performance-app/
-├── backend/
-├── data-engineering/
-├── database/
-├── docs/
-├── frontend/
-├── docker-compose.yml
-└── requirements.txt
+├── backend/              # Spring Boot API
+├── data-engineering/     # Python ETL, portal export, validation
+├── database/             # MySQL schema and helper SQL scripts
+├── docs/                 # Review notes and diagrams
+├── frontend/             # React frontend
+├── docker-compose.yml    # Currently empty / not ready
+├── requirements.txt      # Python dependencies
+└── README.md
+```
+
+## Main Components
+
+### Data Engineering
+
+Location:
+
+```text
+data-engineering/
+```
+
+Responsibilities:
+
+- choose a local Excel file or download one from the Smollan portal
+- read the Excel export with pandas
+- build base tables for employees, stores, products, and visits
+- create and load dynamic `task_*` tables
+- build the normalized `survey_responses` table
+- run validation rules and store results in MySQL
+
+Main entrypoint:
+
+```bash
+python data-engineering/main.py
+```
+
+### Database
+
+Location:
+
+```text
+database/
+```
+
+Important files:
+
+- `schema.sql` creates the main MySQL schema
+- `reset_data.sql` clears loaded data and drops dynamic task tables
+- `Scripts.sql` contains useful manual queries for inspection
+- `analytics.sql` is currently only a placeholder
+
+Main database name:
+
+```text
+unilever_db
+```
+
+Core tables:
+
+- `employees`
+- `stores`
+- `products`
+- `visits`
+- `survey_responses`
+- `validation_results`
+- `validation_run_log`
+
+Dynamic task tables are created by the ETL at runtime.
+
+Examples:
+
+- `task_location_checkin`
+- `task_location_checkout`
+- `task_callcycle_deviation`
+- `task_osa_pack_coc_mh`
+- `task_sos`
+
+### Backend
+
+Location:
+
+```text
+backend/
+```
+
+Stack:
+
+- Java
+- Spring Boot
+- Spring Data JPA
+- MySQL
+
+Default port:
+
+```text
+9000
+```
+
+Current API endpoints:
+
+```text
+GET /api/employees/
+GET /api/reports/deviation-summary
+```
+
+### Frontend
+
+Location:
+
+```text
+frontend/
+```
+
+Stack:
+
+- React
+- React Scripts
+
+Current behavior:
+
+- starts a local React development server
+- calls `http://localhost:9000/api/employees/`
+- displays a basic employee list
+
+The frontend is still an early dashboard starting point.
+
+## Local Setup
+
+### 1. Create the MySQL Database
+
+Open MySQL and run:
+
+```sql
+SOURCE database/schema.sql;
+```
+
+Or copy and run the SQL from:
+
+```text
+database/schema.sql
+```
+
+Important: see the known issues section before rerunning the schema many times.
+
+### 2. Configure Python Environment
+
+Create a local environment file:
+
+```bash
+cp data-engineering/.env.example data-engineering/.env
+```
+
+Then fill in your real local values.
+
+Do not commit `data-engineering/.env`.
+
+### 3. Install Python Dependencies
+
+From the repository root:
+
+```bash
+pip install -r requirements.txt
+```
+
+If you use the portal downloader, Playwright is also required:
+
+```bash
+pip install playwright
+playwright install chromium
+```
+
+### 4. Run the ETL
+
+From the repository root:
+
+```bash
+python data-engineering/main.py
+```
+
+The command asks you to choose:
+
+- local Excel file
+- automatic portal download
+
+### 5. Start the Backend
+
+From the backend folder:
+
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+
+On Windows:
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+The backend should run at:
+
+```text
+http://localhost:9000
+```
+
+### 6. Start the Frontend
+
+From the frontend folder:
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+The frontend usually runs at:
+
+```text
+http://localhost:3000
 ```
 
 ## Current Data Flow
 
-1. Raw Excel data is exported from the Smollan portal manually or through `data-engineering/extract/portal_exporter.py`.
-2. The ETL pipeline reads the Excel file once and prepares base tables and dynamic task tables.
-3. The pipeline builds and loads the `survey_responses` analytical table.
-4. Validation rules run on the loaded MySQL data.
-5. The backend exposes selected data through REST endpoints.
-6. The frontend consumes backend endpoints for simple dashboard views.
+1. `data-engineering/main.py` starts the run.
+2. The user chooses a local Excel file or portal download.
+3. `prepare_source_dataframe` reads and normalizes the Excel data.
+4. `run_etl` builds and loads base tables.
+5. The ETL creates and loads dynamic task tables.
+6. The project fetches visit IDs from MySQL.
+7. `build_survey_responses_dataframe` creates normalized survey rows.
+8. `load_survey_responses` inserts those rows into MySQL.
+9. `validation_runner.py` creates a validation run log.
+10. The validation engine runs active validation rules.
+11. Validation issues are inserted into `validation_results`.
+12. Backend endpoints expose selected data.
+13. Frontend reads backend data.
 
-## Main Components
+## Current Validation Rule
 
-### `data-engineering/`
+The active validation rule is:
 
-Contains the ETL and validation logic.
+```text
+OSA_UNUSUAL_NON_BY_BANNER
+```
 
-Main responsibilities:
-- read Excel files
-- load employees, stores, products, visits, and task tables into MySQL
-- build and load `survey_responses`
-- run validation rules
+Purpose:
 
-Main entrypoint:
-- `python .\data-engineering\main.py`
+- find OSA responses marked `Non`
+- compare them against weekly product/banner availability patterns
+- flag suspicious `Non` answers when most other answers are `Oui`
 
-### `backend/`
+Result table:
 
-Spring Boot application connected to the same MySQL database.
+```text
+validation_results
+```
 
-Current backend responsibilities:
-- expose employees through `/api/employees/`
-- expose deviation summary data through `/api/reports/deviation-summary`
+Run log table:
 
-Default backend port from the current config:
-- `9000`
+```text
+validation_run_log
+```
 
-### `frontend/`
+## Known Issues
 
-React application that currently fetches employee data from the backend and renders a simple dashboard page.
+These are important before continuing development:
 
-Current frontend expectation:
-- backend available at `http://localhost:9000`
+- `docker-compose.yml` is empty, so Docker startup is not ready.
+- `requirements.txt` is currently UTF-16 encoded; normal Python tools usually expect UTF-8.
+- `playwright` is used by the portal exporter but is not listed in `requirements.txt`.
+- Backend database credentials are currently written directly in `backend/src/main/resources/application.properties`.
+- `database/schema.sql` runs `ALTER TABLE validation_results` before creating `validation_results`; rerunning it can fail.
+- `CREATE TABLE validation_results` does not use `IF NOT EXISTS`.
+- `docs/data-engineering-end-to-end-review.md` mentions orchestration files that no longer exist as source `.py` files.
+- The frontend is still minimal and only displays employees.
 
-## Environment Notes
+## How To Continue This Project
 
-The `data-engineering` module now uses:
+Recommended next steps:
 
-- `data-engineering/.env` for local secrets
-- `.gitignore` to keep that file out of GitHub
+1. Fix `database/schema.sql` so `validation_results` is created safely.
+2. Convert `requirements.txt` to UTF-8.
+3. Add `playwright` to Python dependencies if portal download is required.
+4. Move backend database credentials into environment variables.
+5. Expand backend endpoints for validation and dashboard reporting.
+6. Build frontend dashboard pages around validation results and deviation summaries.
+7. Add tests for ETL transformations.
+8. Add backend API tests.
+9. Decide whether dynamic task tables should remain dynamic or move toward controlled migrations.
+10. Fill `docker-compose.yml` only when you are ready to run MySQL/backend/frontend through Docker.
 
-Typical secrets stored there:
-- MySQL connection settings
-- portal credentials for automatic Excel download
+## Development Notes
 
-## Run Order
-
-If you want to use the full local flow:
-
-1. Start MySQL and make sure the target schema exists.
-2. Run the data engineering pipeline.
-3. Start the Spring Boot backend.
-4. Start the React frontend.
-
-## Status
-
-The repository is now organized around a clear separation:
-
-- `build_*` files prepare data
-- `load_*` files write data to MySQL
-- `main.py` and `etl_excel_to_mysql.py` orchestrate the ETL flow
-
-This makes the ETL side much easier to maintain than the previous single-file structure.
+- The ETL currently reads an Excel source once and reuses the in-memory dataframe.
+- Base table loading is separated from task table loading.
+- Validation logic is separated from ETL logic.
+- `survey_responses` is the best table for analytics and validation because it keeps responses normalized.
+- `task_*` tables are useful for task-specific wide reporting, but their schema can change depending on incoming questions.
