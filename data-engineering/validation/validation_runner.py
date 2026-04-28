@@ -38,15 +38,23 @@ def finish_validation_run(cursor, run_id: int, status: str, rules_executed: int,
     )
 
 
-def main():
+def _normalize_target_visit_ids(target_visit_ids: list[int] | None) -> list[int] | None:
+    if target_visit_ids is None:
+        return None
+
+    return sorted({int(visit_id) for visit_id in target_visit_ids})
+
+
+def main(target_visit_ids: list[int] | None = None):
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor()
+    normalized_target_visit_ids = _normalize_target_visit_ids(target_visit_ids)
 
     run_id = insert_validation_run(cursor)
     conn.commit()
 
     try:
-        results = run_all_validations(run_id)
+        results = run_all_validations(run_id, target_visit_ids=normalized_target_visit_ids)
 
         rules_executed = len(results)
         issues_found = sum(results.values())
@@ -62,6 +70,10 @@ def main():
 
         print("Validation finished successfully.")
         print(f"Run ID: {run_id}")
+        if normalized_target_visit_ids is None:
+            print("Validation scope: full database")
+        else:
+            print(f"Validation scope: {len(normalized_target_visit_ids)} uploaded visits")
         for rule_code, count in results.items():
             print(f"{rule_code}: {count}")
         print(f"Total issues found: {issues_found}")

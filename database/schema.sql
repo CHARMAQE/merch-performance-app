@@ -1,4 +1,4 @@
--- Active: 1776577465055@@127.0.0.1@3306@unilever_db
+-- Active: 1776681738854@@127.0.0.1@3306@unilever_db
 CREATE DATABASE IF NOT EXISTS unilever_db;
 USE unilever_db;
 
@@ -8,40 +8,44 @@ USE unilever_db;
 
 CREATE TABLE IF NOT EXISTS employees (
     employee_id INT AUTO_INCREMENT PRIMARY KEY,
-    employee_code VARCHAR(20),
-    username VARCHAR(100)
+    employee_code VARCHAR(20) NOT NULL,
+    username VARCHAR(100),
+    UNIQUE KEY uq_employees_employee_code (employee_code)
 );
 
 CREATE TABLE IF NOT EXISTS stores (
     store_id INT AUTO_INCREMENT PRIMARY KEY,
-    store_code VARCHAR(50),
+    store_code VARCHAR(50) NOT NULL,
     store_name VARCHAR(150),
     store_city VARCHAR(100),
     store_state VARCHAR(100),
     store_region VARCHAR(100),
-    store_format VARCHAR(100)
+    store_format VARCHAR(100),
+    UNIQUE KEY uq_stores_store_code (store_code)
 );
 
 CREATE TABLE IF NOT EXISTS products (
     product_id INT AUTO_INCREMENT PRIMARY KEY,
-    product_code VARCHAR(50),
+    product_code VARCHAR(50) NOT NULL,
     barcode VARCHAR(50),
     product_description VARCHAR(200),
     brand VARCHAR(100),
     category VARCHAR(100),
-    sub_category VARCHAR(100)
+    sub_category VARCHAR(100),
+    UNIQUE KEY uq_products_product_code (product_code)
 );
 
 CREATE TABLE IF NOT EXISTS visits (
     visit_id INT AUTO_INCREMENT PRIMARY KEY,
-    visit_date DATE,
+    visit_date DATE NOT NULL,
     year INT,
     month VARCHAR(20),
-    employee_id INT,
-    store_id INT,
+    employee_id INT NOT NULL,
+    store_id INT NOT NULL,
     latitude DECIMAL(10,6),
     longitude DECIMAL(10,6),
     map_link TEXT,
+    UNIQUE KEY uq_visits_natural_key (visit_date, employee_id, store_id),
     FOREIGN KEY (employee_id) REFERENCES employees(employee_id),
     FOREIGN KEY (store_id) REFERENCES stores(store_id)
 );
@@ -72,43 +76,22 @@ CREATE TABLE IF NOT EXISTS survey_responses (
 -- VALIDATION TABLES
 -- ============================================
 
+-- If you are migrating from the old validation schema, recreate these tables
+-- in this order because validation_results depends on the other two tables.
 -- DROP TABLE IF EXISTS validation_results;
+-- DROP TABLE IF EXISTS validation_run_log;
+-- DROP TABLE IF EXISTS validation_rules;
 
-
--- ALTER TABLE validation_results
--- ADD COLUMN validation_id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST;
-
-
-CREATE TABLE validation_results (
-    validation_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    rule_code VARCHAR(100) NOT NULL,
-    visit_id INT NULL,
-    store_code VARCHAR(50) NULL,
-    employee_code VARCHAR(50) NULL,
-    product_code VARCHAR(50) NULL,
-    banner VARCHAR(100) NULL,
-    detected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    question TEXT NULL,
-    response TEXT NULL,
-    message TEXT NOT NULL,
-    no_count INT NULL,
-    yes_count INT NULL,
-    total_answers INT NULL,
-    availability_rate DECIMAL(5,2) NULL,
-    INDEX idx_rule_code (rule_code),
-    INDEX idx_visit_id (visit_id),
-    INDEX idx_store_code (store_code),
-    INDEX idx_employee_code (employee_code),
-    INDEX idx_product_code (product_code),
-    INDEX idx_banner (banner),
-    INDEX idx_detected_at (detected_at)
+CREATE TABLE IF NOT EXISTS validation_rules (
+    rule_code VARCHAR(100) PRIMARY KEY,
+    rule_name VARCHAR(150) NOT NULL,
+    description TEXT NULL,
+    source_table VARCHAR(100) NOT NULL,
+    severity VARCHAR(20) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
-
-
-SHOW COLUMNS FROM validation_results;
--- ============================================
--- LOGS FOR VALIDATION TABLES
--- ============================================
 
 CREATE TABLE IF NOT EXISTS validation_run_log (
     run_id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -119,6 +102,40 @@ CREATE TABLE IF NOT EXISTS validation_run_log (
     issues_found INT NULL,
     error_message TEXT NULL
 );
+
+CREATE TABLE IF NOT EXISTS validation_results (
+    validation_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    run_id BIGINT NOT NULL,
+    rule_code VARCHAR(100) NOT NULL,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id VARCHAR(100) NULL,
+    visit_id INT NULL,
+    store_code VARCHAR(50) NULL,
+    employee_code VARCHAR(50) NULL,
+    product_code VARCHAR(50) NULL,
+    question TEXT NULL,
+    actual_value TEXT NULL,
+    expected_value TEXT NULL,
+    metric_value DECIMAL(12,4) NULL,
+    message TEXT NOT NULL,
+    severity VARCHAR(20) NOT NULL,
+    details_json JSON NULL,
+    detected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_rule_code (rule_code),
+    INDEX idx_run_id (run_id),
+    INDEX idx_entity_type (entity_type),
+    INDEX idx_visit_id (visit_id),
+    INDEX idx_store_code (store_code),
+    INDEX idx_employee_code (employee_code),
+    INDEX idx_product_code (product_code),
+    INDEX idx_detected_at (detected_at),
+    CONSTRAINT fk_validation_results_run
+        FOREIGN KEY (run_id) REFERENCES validation_run_log(run_id),
+    CONSTRAINT fk_validation_results_rule
+        FOREIGN KEY (rule_code) REFERENCES validation_rules(rule_code)
+);
+
+SHOW COLUMNS FROM validation_results;
 
 -- ============================================
 -- NOTE

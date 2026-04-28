@@ -41,8 +41,9 @@ def get_all_task_tables():
 
 def full_refresh_database(cursor, db):
     task_tables = get_all_task_tables()
+    payload_tables = ["validation_results", "survey_responses"] + task_tables
     base_tables = ["visits", "products", "stores", "employees"]
-    all_tables = task_tables + base_tables
+    all_tables = payload_tables + base_tables
 
     cursor.execute("SET FOREIGN_KEY_CHECKS=0")
     try:

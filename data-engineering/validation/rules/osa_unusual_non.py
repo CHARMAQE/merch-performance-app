@@ -1,9 +1,18 @@
+import json
 import mysql.connector
 
 from config.db_config import DB_CONFIG
 
 
 RULE_CODE = "OSA_UNUSUAL_NON_BY_BANNER"
+RULE_NAME = "OSA unusual non by banner"
+RULE_DESCRIPTION = (
+    "Flags OSA answers marked 'Non' when the same banner, product, and question "
+    "show a strong weekly 'Oui' pattern."
+)
+SOURCE_TABLE = "survey_responses"
+SEVERITY = "MEDIUM"
+ENTITY_TYPE = "survey_response"
 
 
 def _banner_case_sql() -> str:
@@ -26,11 +35,31 @@ def _banner_case_sql() -> str:
     """
 
 
-def run_osa_unusual_non_validation(_run_id: int) -> int:
+def _normalize_target_visit_ids(target_visit_ids: list[int] | None) -> list[int] | None:
+    if target_visit_ids is None:
+        return None
+
+    return sorted({int(visit_id) for visit_id in target_visit_ids})
+
+
+def run(run_id: int, target_visit_ids: list[int] | None = None) -> int:
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
+    normalized_target_visit_ids = _normalize_target_visit_ids(target_visit_ids)
+
+    if normalized_target_visit_ids == []:
+        cursor.close()
+        conn.close()
+        return 0
 
     banner_case = _banner_case_sql()
+    target_filter_sql = ""
+    query_params: tuple[int, ...] = ()
+
+    if normalized_target_visit_ids is not None:
+        placeholders = ",".join(["%s"] * len(normalized_target_visit_ids))
+        target_filter_sql = f" AND b.visit_id IN ({placeholders})"
+        query_params = tuple(normalized_target_visit_ids)
 
     query = f"""
     WITH osa_base AS (
@@ -98,70 +127,97 @@ def run_osa_unusual_non_validation(_run_id: int) -> int:
      AND b.question = w.question
     WHERE b.response = 'Non'
       AND w.availability_rate >= 80
+      {target_filter_sql}
     """
 
-    cursor.execute(query)
+    if query_params:
+        cursor.execute(query, query_params)
+    else:
+        cursor.execute(query)
     rows = cursor.fetchall()
 
     inserted = 0
 
     insert_sql = """
     INSERT INTO validation_results (
+        run_id,
         rule_code,
+        entity_type,
+        entity_id,
         visit_id,
         store_code,
         employee_code,
         product_code,
-        banner,
         question,
-        response,
+        actual_value,
+        expected_value,
+        metric_value,
         message,
-        no_count,
-        yes_count,
-        total_answers,
-        availability_rate
+        severity,
+        details_json
     )
     VALUES (
+        %(run_id)s,
         %(rule_code)s,
+        %(entity_type)s,
+        %(entity_id)s,
         %(visit_id)s,
         %(store_code)s,
         %(employee_code)s,
         %(product_code)s,
-        %(banner)s,
         %(question)s,
-        %(response)s,
+        %(actual_value)s,
+        %(expected_value)s,
+        %(metric_value)s,
         %(message)s,
-        %(no_count)s,
-        %(yes_count)s,
-        %(total_answers)s,
-        %(availability_rate)s
+        %(severity)s,
+        %(details_json)s
     )
     """
 
+    payloads = []
+
     for row in rows:
-        payload = {
-            "rule_code": RULE_CODE,
-            "visit_id": row["visit_id"],
-            "store_code": row["store_code"],
-            "employee_code": row["employee_code"],
-            "product_code": row["product_code"],
+        details = {
             "banner": row["banner"],
-            "question": row["question"],
-            "response": row["response"],
-            "message": (
-                f"OSA response is 'Non' while weekly availability for SKU {row['product_code']} "
-                f"in banner {row['banner']} is {row['availability_rate']}%."
-            ),
-            "no_count": int(row["no_count"]),
+            "weekly_expected_response": "Oui",
             "yes_count": int(row["yes_count"]),
+            "no_count": int(row["no_count"]),
             "total_answers": int(row["total_answers"]),
             "availability_rate": float(row["availability_rate"]),
         }
+        payloads.append(
+            {
+                "run_id": run_id,
+                "rule_code": RULE_CODE,
+                "entity_type": ENTITY_TYPE,
+                "entity_id": f"{row['visit_id']}:{row['product_code']}",
+                "visit_id": row["visit_id"],
+                "store_code": row["store_code"],
+                "employee_code": row["employee_code"],
+                "product_code": row["product_code"],
+                "question": row["question"],
+                "actual_value": row["response"],
+                "expected_value": "Oui",
+                "metric_value": float(row["availability_rate"]),
+                "message": (
+                    f"OSA response is 'Non' while weekly availability for SKU {row['product_code']} "
+                    f"in banner {row['banner']} is {row['availability_rate']}%."
+                ),
+                "severity": SEVERITY,
+                "details_json": json.dumps(details),
+            }
+        )
 
-        cursor.execute(insert_sql, payload)
-        inserted += 1
+    if payloads:
+        cursor.executemany(insert_sql, payloads)
+        inserted = len(payloads)
 
     conn.commit()
     cursor.close()
     conn.close()
     return inserted
+
+
+def run_osa_unusual_non_validation(run_id: int, target_visit_ids: list[int] | None = None) -> int:
+    return run(run_id, target_visit_ids=target_visit_ids)
