@@ -16,12 +16,9 @@ from transform.build_base_tables import (
 )
 from transform.build_task_tables import build_tagged_task_dataframe, build_task_table_batches
 
-FULL_REFRESH_ON_EACH_RUN = False
 
 
 def run_etl(source_df, full_refresh=None, logger=print):
-    if full_refresh is None:
-        full_refresh = FULL_REFRESH_ON_EACH_RUN
 
     df = source_df.copy()
 
@@ -63,6 +60,7 @@ def run_etl(source_df, full_refresh=None, logger=print):
             "stores": len(store_map),
             "products": len(prod_map),
             "visits": len(visit_map),
+            "affected_visit_ids": affected_visit_ids,
         }
 
     except Exception:

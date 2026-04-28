@@ -27,26 +27,49 @@ def export_from_portal() -> str:
     return excel_file
 
 
-def choose_input_source() -> str:
-    print("\nChoose data source:")
-    print("1 - Excel file from computer")
-    print("2 - Download from portal automatically")
+def choose_input_source() -> tuple[str, bool]:
+    while True:
+        print("\nChoose data source:")
+        print("1 - Excel file from computer")
+        print("2 - Download from portal automatically")
 
-    choice = input("Enter 1 or 2: ").strip()
+        choice = input("Enter 1 or 2: ").strip()
 
-    if choice == "1":
-        return choose_local_excel_file()
+        if choice == "1":
+            return choose_local_excel_file(), False
 
-    if choice == "2":
-        return export_from_portal()
+        if choice == "2":
+            return export_from_portal(), True
 
-    raise ValueError("Invalid choice. Please enter 1 or 2.")
+        print("Invalid choice. Please enter 1 or 2.")
+
+
+def choose_load_mode() -> bool:
+    while True:
+        print("\nChoose load mode:")
+        print("1 - History / backfill load (skip validation)")
+        print("2 - Daily load (run validation)")
+
+        choice = input("Enter 1 or 2: ").strip()
+
+        if choice == "1":
+            return False
+
+        if choice == "2":
+            return True
+
+        print("Invalid choice. Please enter 1 or 2.")
 
 
 def main():
     print("\n===== START PROJECT RUN =====")
 
-    excel_file = choose_input_source()
+    excel_file, downloaded_from_portal = choose_input_source()
+    if downloaded_from_portal:
+        should_run_validation = True
+        print("\nPortal download detected: using daily load mode with validation.")
+    else:
+        should_run_validation = choose_load_mode()
     print(f"\nSource file: {excel_file}")
 
     print("\nReading Excel file once...")
@@ -55,8 +78,10 @@ def main():
 
     print("\nRunning core ETL...")
     etl_result = run_etl(source_df, full_refresh=False, logger=print)
+    affected_visit_ids = etl_result.get("affected_visit_ids", [])
     print("\nCore ETL finished.")
     print(etl_result)
+    print(f"Affected visits in uploaded file: {len(affected_visit_ids)}")
 
     print("\nFetching visits lookup for survey_responses...")
     visit_lookup_df = fetch_visit_lookup_dataframe()
@@ -73,8 +98,11 @@ def main():
     inserted_rows = load_survey_responses(df)
     print(f"Inserted rows into survey_responses: {inserted_rows}")
 
-    print("\nRunning database validations...")
-    run_validation()
+    if should_run_validation:
+        print("\nRunning database validations...")
+        run_validation(target_visit_ids=affected_visit_ids)
+    else:
+        print("\nValidation skipped for history/backfill load.")
 
     print("\n===== PROJECT RUN COMPLETED SUCCESSFULLY =====")
 

@@ -91,6 +91,7 @@ def build_survey_responses_dataframe(source_df: pd.DataFrame, visit_lookup_df: p
     ].copy()
 
     out = out[out["visit_id"].notna()].copy()
+    out = out.drop_duplicates().copy()
     out = out.where(pd.notna(out), None)
     out = out.reset_index(drop=True)
 
