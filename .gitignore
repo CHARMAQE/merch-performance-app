@@ -3,15 +3,18 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.RealWork/
 
 # Java
 backend/target/
 
 # Node
 frontend/node_modules/
+mobile/node_modules/
 
 # IDE
 .vscode/
+**/.vscode/
 .idea/
 
 # OS

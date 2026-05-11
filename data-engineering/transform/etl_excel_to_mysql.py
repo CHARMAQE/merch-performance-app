@@ -7,7 +7,7 @@ from load.load_base_tables import (
     load_stores,
     load_visits,
 )
-from load.load_task_tables import full_refresh_database, load_task_tables
+from load.load_task_tables import load_task_tables
 from transform.build_base_tables import (
     build_employees_dataframe,
     build_products_dataframe,
@@ -18,7 +18,7 @@ from transform.build_task_tables import build_tagged_task_dataframe, build_task_
 
 
 
-def run_etl(source_df, full_refresh=None, logger=print):
+def run_etl(source_df, logger=print):
 
     df = source_df.copy()
 
@@ -35,9 +35,6 @@ def run_etl(source_df, full_refresh=None, logger=print):
     cursor = db.cursor()
 
     try:
-        if full_refresh:
-            full_refresh_database(cursor, db)
-
         emp_map = load_employees(db, cursor, employees_df, logger=logger)
         store_map = load_stores(db, cursor, stores_df, logger=logger)
         prod_map = load_products(db, cursor, products_df, logger=logger)

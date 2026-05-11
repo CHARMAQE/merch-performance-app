@@ -2,7 +2,7 @@
 
 This folder contains the React frontend for the Merch Performance project.
 
-The frontend is currently an early dashboard starting point. It connects to the backend and displays employees loaded from MySQL.
+The frontend displays the store map and validation dashboard view backed by the Spring Boot API.
 
 ## Stack
 
@@ -22,13 +22,13 @@ frontend/src/App.js
 The app calls:
 
 ```text
-http://localhost:9000/api/employees/
+GET http://localhost:9000/api/map/stores
 ```
 
 Then it displays:
 
 ```text
-employee_code - username
+stores detected on the map with their current dashboard context
 ```
 
 ## Requirements
@@ -79,22 +79,20 @@ Builds the frontend for production.
 The frontend currently expects this backend endpoint:
 
 ```text
-GET http://localhost:9000/api/employees/
+GET http://localhost:9000/api/map/stores
 ```
 
-If the backend is not running, the page will load but the employee list will not appear.
+If the backend is not running, the page will load but the map data will not appear.
 
 ## How To Continue
 
 Recommended next frontend work:
 
-1. Add a dashboard view for validation results.
-2. Add a deviation summary view using `/api/reports/deviation-summary`.
-3. Add loading and error states.
-4. Move the backend API base URL into an environment variable.
-5. Add basic styling and layout.
-6. Add frontend tests for data loading states.
+1. Add validation issue drill-down filters.
+2. Add OSA risk prediction views.
+3. Move the backend API base URL into an environment variable.
+4. Add frontend tests for map and dashboard loading states.
 
 ## Current Scope
 
-This is not yet a full dashboard. It is the first frontend connection to the backend/API layer.
+This is a first dashboard version focused on stores, validation, and the map.

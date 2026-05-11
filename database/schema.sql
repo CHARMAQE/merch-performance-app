@@ -24,6 +24,29 @@ CREATE TABLE IF NOT EXISTS stores (
     UNIQUE KEY uq_stores_store_code (store_code)
 );
 
+CREATE TABLE IF NOT EXISTS supervisors (
+    supervisor_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    username VARCHAR(80) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    phone VARCHAR(40),
+    email VARCHAR(120),
+    region VARCHAR(120),
+    active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS supervisor_stores (
+    supervisor_id BIGINT NOT NULL,
+    store_id INT NOT NULL,
+    PRIMARY KEY (supervisor_id, store_id),
+    CONSTRAINT fk_supervisor_stores_supervisor
+        FOREIGN KEY (supervisor_id) REFERENCES supervisors(supervisor_id)
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_supervisor_stores_store
+        FOREIGN KEY (store_id) REFERENCES stores(store_id)
+        ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS products (
     product_id INT AUTO_INCREMENT PRIMARY KEY,
     product_code VARCHAR(50) NOT NULL,
