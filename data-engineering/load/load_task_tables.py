@@ -39,23 +39,6 @@ def get_all_task_tables():
     return sorted(set(TASK_TABLE_MAP.values()) | set(TITLE_TABLE_MAP.values()))
 
 
-def full_refresh_database(cursor, db):
-    task_tables = get_all_task_tables()
-    payload_tables = ["validation_results", "survey_responses"] + task_tables
-    base_tables = ["visits", "products", "stores", "employees"]
-    all_tables = payload_tables + base_tables
-
-    cursor.execute("SET FOREIGN_KEY_CHECKS=0")
-    try:
-        for table_name in all_tables:
-            if table_exists(cursor, table_name):
-                cursor.execute(f"TRUNCATE TABLE {table_name}")
-        db.commit()
-        print("Full refresh: all existing data cleared.")
-    finally:
-        cursor.execute("SET FOREIGN_KEY_CHECKS=1")
-
-
 def ensure_task_table_structure(
     cursor,
     table_name,

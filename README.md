@@ -2,13 +2,13 @@
 
 Merch Performance App is a full-stack project for processing Unilever/Smollan retail execution data.
 
-The project takes exported field execution data from Excel, loads it into MySQL, runs validation logic, exposes selected data through a Spring Boot API, and displays early dashboard data in a React frontend.
+The project takes exported field execution data from Excel, loads it into MySQL, runs validation logic, exposes reporting endpoints through a Spring Boot API, and displays a first validation dashboard in a React frontend.
 
 ## Project Status
 
-This project is currently a working development foundation, not a finished production app.
+This project is currently a strong academic prototype with a working end-to-end data pipeline, validation layer, backend API, and first dashboard version.
 
-The strongest part of the project right now is the data engineering flow. The backend and frontend are still early, but they already connect to the same MySQL database and provide the beginning of a reporting/dashboard layer.
+The strongest part of the project is the data engineering and validation flow. The backend and frontend now expose a usable first dashboard, but the project still needs more reporting depth, more validation rules, and stronger automated testing before it would be considered production-ready.
 
 ## Main Architecture
 
@@ -28,9 +28,8 @@ merch-performance-app/
 ├── backend/              # Spring Boot API
 ├── data-engineering/     # Python ETL, portal export, validation
 ├── database/             # MySQL schema and helper SQL scripts
-├── docs/                 # Review notes and diagrams
 ├── frontend/             # React frontend
-├── docker-compose.yml    # Currently empty / not ready
+├── mobile/               # Expo mobile app
 ├── requirements.txt      # Python dependencies
 └── README.md
 ```
@@ -71,9 +70,10 @@ database/
 Important files:
 
 - `schema.sql` creates the main MySQL schema
+- `seed_supervisors.sql` creates demo supervisors and assigns stores by city
 - `reset_data.sql` clears loaded data and drops dynamic task tables
-- `Scripts.sql` contains useful manual queries for inspection
-- `analytics.sql` is currently only a placeholder
+- `manual_validation_queries.sql` contains useful manual queries for inspection
+- `reporting_queries.sql` contains quick reporting queries for dashboard and Power BI checks
 
 Main database name:
 
@@ -113,7 +113,7 @@ Stack:
 
 - Java
 - Spring Boot
-- Spring Data JPA
+- Spring JDBC
 - MySQL
 
 Default port:
@@ -125,8 +125,10 @@ Default port:
 Current API endpoints:
 
 ```text
-GET /api/employees/
-GET /api/reports/deviation-summary
+GET /api/dashboard/overview
+GET /api/dashboard/latest-issues
+GET /api/map/stores
+GET /api/map/stores/{storeCode}/details
 ```
 
 ### Frontend
@@ -145,10 +147,10 @@ Stack:
 Current behavior:
 
 - starts a local React development server
-- calls `http://localhost:9000/api/employees/`
-- displays a basic employee list
+- calls the backend map and dashboard endpoints
+- displays store locations and the current validation dashboard context
 
-The frontend is still an early dashboard starting point.
+The frontend is now a first dashboard version focused on stores, validation, and anomaly context.
 
 ## Local Setup
 
@@ -208,6 +210,13 @@ The command asks you to choose:
 - local Excel file
 - automatic portal download
 
+If you choose a local Excel file, you can also choose:
+
+- `History / backfill load`: loads the data but skips validation
+- `Daily load`: loads the data and runs validation
+
+Validation is now scoped to the visits coming from the uploaded file, while the database keeps the full month history.
+
 ### 5. Start the Backend
 
 From the backend folder:
@@ -262,24 +271,37 @@ http://localhost:3000
 12. Backend endpoints expose selected data.
 13. Frontend reads backend data.
 
-## Current Validation Rule
+## Current Validation Rules
 
-The active validation rule is:
+The active validation rules are:
 
 ```text
 OSA_UNUSUAL_NON_BY_BANNER
+GPS_INCONSISTENT_CHECKIN_SAME_STORE_MONTH
 ```
 
 Purpose:
 
-- find OSA responses marked `Non`
-- compare them against weekly product/banner availability patterns
-- flag suspicious `Non` answers when most other answers are `Oui`
+- `OSA_UNUSUAL_NON_BY_BANNER`
+  - finds OSA responses marked `Non`
+  - compares them against weekly product/banner availability patterns
+  - flags suspicious `Non` answers when most other answers are `Oui`
+
+- `GPS_INCONSISTENT_CHECKIN_SAME_STORE_MONTH`
+  - compares repeated monthly visits for the same merchandiser and store
+  - detects GPS check-ins that are far from the normal monthly GPS cluster
+  - flags suspicious visit locations
 
 Result table:
 
 ```text
 validation_results
+```
+
+Rule metadata table:
+
+```text
+validation_rules
 ```
 
 Run log table:
@@ -292,29 +314,21 @@ validation_run_log
 
 These are important before continuing development:
 
-- `docker-compose.yml` is empty, so Docker startup is not ready.
-- `requirements.txt` is currently UTF-16 encoded; normal Python tools usually expect UTF-8.
-- `playwright` is used by the portal exporter but is not listed in `requirements.txt`.
-- Backend database credentials are currently written directly in `backend/src/main/resources/application.properties`.
-- `database/schema.sql` runs `ALTER TABLE validation_results` before creating `validation_results`; rerunning it can fail.
-- `CREATE TABLE validation_results` does not use `IF NOT EXISTS`.
-- `docs/data-engineering-end-to-end-review.md` mentions orchestration files that no longer exist as source `.py` files.
-- The frontend is still minimal and only displays employees.
+- `requirements.txt` still needs a small dependency cleanup and review for portal-export dependencies.
+- Backend credentials now support environment variables, but the fallback defaults should still be hardened before deployment.
+- The dashboard is a strong first version, but more KPI views and filters are still needed.
 
 ## How To Continue This Project
 
 Recommended next steps:
 
-1. Fix `database/schema.sql` so `validation_results` is created safely.
-2. Convert `requirements.txt` to UTF-8.
-3. Add `playwright` to Python dependencies if portal download is required.
-4. Move backend database credentials into environment variables.
-5. Expand backend endpoints for validation and dashboard reporting.
-6. Build frontend dashboard pages around validation results and deviation summaries.
-7. Add tests for ETL transformations.
-8. Add backend API tests.
-9. Decide whether dynamic task tables should remain dynamic or move toward controlled migrations.
-10. Fill `docker-compose.yml` only when you are ready to run MySQL/backend/frontend through Docker.
+1. Add more business validation rules.
+2. Expand dashboard KPIs and drill-down filters.
+3. Add tests for ETL transformations and validation rules.
+4. Add richer backend API tests instead of only context load.
+5. Review Python dependencies and explicitly document portal-export requirements.
+6. Decide whether dynamic task tables should remain dynamic or move toward controlled migrations.
+7. Add Docker Compose only when you are ready to run MySQL, backend, and frontend together through Docker.
 
 ## Development Notes
 

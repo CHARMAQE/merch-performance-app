@@ -8,7 +8,7 @@ The backend connects to the MySQL database loaded by the Python ETL and exposes 
 
 - Java
 - Spring Boot
-- Spring Data JPA
+- Spring JDBC
 - MySQL Connector/J
 - Maven wrapper
 
@@ -32,7 +32,14 @@ Current backend port:
 9000
 ```
 
-Important: the database password is currently written directly in `application.properties`. Move this to environment variables before sharing or deploying the project.
+The backend now supports environment-variable overrides through:
+
+- `DB_URL`
+- `DB_USER`
+- `DB_PASSWORD`
+- `SERVER_PORT`
+
+Local fallback values still exist in `application.properties` for development convenience.
 
 ## Run Locally
 
@@ -56,38 +63,68 @@ http://localhost:9000
 
 ## Current Endpoints
 
-### Employees
+### Dashboard Overview
 
 ```text
-GET /api/employees/
+GET /api/dashboard/overview
 ```
 
-Returns all rows from the `employees` table.
+Returns the main dashboard snapshot:
 
-### Call Cycle Deviation Summary
+- visit date coverage in the database
+- counts of employees, stores, products, visits, and survey responses
+- the latest validation run
+- issue counts by rule
+- issue counts by severity
+
+### Latest Validation Issues
 
 ```text
-GET /api/reports/deviation-summary
+GET /api/dashboard/latest-issues?limit=12
 ```
 
-Returns summary counts by employee using:
+Returns the latest validation issues from the most recent validation run.
 
-- `task_callcycle_deviation`
-- `visits`
-- `employees`
+### Mobile Supervisor Login
 
-The query counts:
+```text
+POST /api/mobile/login
+```
 
-- completed visits where `q_callcycle_deviation = 'Non'`
-- deviated visits where `q_callcycle_deviation = 'Oui'`
-- total rows
+Request:
+
+```json
+{
+  "username": "casa_sup",
+  "password": "1234"
+}
+```
+
+Returns the active supervisor account when the demo credentials are valid.
+
+### Mobile Supervisor Stores
+
+```text
+GET /api/mobile/stores?supervisorId=1
+```
+
+Returns only stores assigned to the supervisor through `supervisor_stores`.
+
+### Mobile Supervisor Store Details
+
+```text
+GET /api/mobile/stores/{storeCode}?supervisorId=1
+```
+
+Returns store details only if the selected store is assigned to that supervisor.
 
 ## Current Java Packages
 
 ```text
 com.smollan.backend.controller
-com.smollan.backend.entity
-com.smollan.backend.repository
+com.smollan.backend.dto.dashboard
+com.smollan.backend.dto.map
+com.smollan.backend.dto.validation
 com.smollan.backend.service
 ```
 
@@ -95,29 +132,31 @@ com.smollan.backend.service
 
 ```text
 BackendApplication.java
-controller/EmployeeController.java
-controller/CallcycleDeviationController.java
-repository/EmployeeRepository.java
-repository/CallcycleDeviationRepository.java
-entity/Employee.java
-entity/TaskLocationChecin.java
+controller/DashboardController.java
+controller/MobileController.java
+controller/StoreMapController.java
+service/DashboardService.java
+service/MobileService.java
+service/StoreMapService.java
+dto/dashboard/DashboardOverviewResponse.java
+dto/map/StoreMapMarkerResponse.java
+dto/map/StoreMapDetailResponse.java
+dto/mobile/MobileLoginRequest.java
+dto/mobile/MobileSupervisorResponse.java
+dto/validation/ValidationIssueResponse.java
 ```
 
 ## Known Issues
 
-- Credentials are hardcoded in `application.properties`.
-- The backend currently exposes only a small part of the database.
-- `TaskLocationChecin` appears to have a typo in the class name.
+- Credentials now support environment-variable overrides, but the fallback defaults should still be hardened before deployment.
 - There are no full API tests yet.
-- The report repository uses a native SQL query, so column names must stay aligned with the ETL-created tables.
+- Dashboard and map services use SQL queries, so column names must stay aligned with the ETL-created tables.
 
 ## How To Continue
 
 Recommended next backend work:
 
-1. Move database credentials to environment variables.
-2. Add endpoint(s) for `validation_results`.
-3. Add endpoint(s) for `validation_run_log`.
-4. Add dashboard summary DTOs instead of exposing raw projections only.
-5. Add backend tests with an H2 or test MySQL profile.
-6. Add clearer error handling for missing dynamic task tables.
+1. Add endpoint(s) for validation run history and filtering by date or rule.
+2. Add drill-down reporting around `validation_results`.
+3. Add backend tests with an H2 or test MySQL profile.
+4. Add clearer error handling for missing dynamic task tables.

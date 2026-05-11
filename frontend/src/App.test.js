@@ -1,8 +1,12 @@
-import { render, screen } from '@testing-library/react';
-import App from './App';
+import { render, screen } from "@testing-library/react";
+import LoginPage from "./pages/LoginPage";
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+test("renders the login page before authentication", () => {
+  render(<LoginPage onLogin={jest.fn()} />);
+
+  expect(
+    screen.getByRole("heading", { name: /Demo Login/i })
+  ).toBeInTheDocument();
+  expect(screen.getByPlaceholderText(/Enter username/i)).toBeInTheDocument();
+  expect(screen.getByPlaceholderText(/Enter password/i)).toBeInTheDocument();
 });

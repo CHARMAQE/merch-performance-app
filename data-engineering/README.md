@@ -12,24 +12,46 @@ Main command from the repository root:
 python data-engineering/main.py
 ```
 
+Date-filtered command example:
+
+```bash
+python data-engineering/main.py --file "C:\path\to\export.xlsx" --start-date 2026-05-01 --end-date 2026-05-03 --skip-validation
+```
+
+Local Excel command examples:
+
+```bash
+python data-engineering/main.py --file "C:\path\to\export.xlsx" --skip-validation
+python data-engineering/main.py --file "C:\path\to\export.xlsx" --run-validation
+```
+
+Portal command example:
+
+```bash
+python data-engineering/main.py --portal
+```
+
+When `--portal` is used, the downloaded Excel data is automatically filtered to yesterday's visit date. For example, if the command is run on `2026-05-04`, only `2026-05-03` rows are loaded.
+
 The run does this:
 
 1. Ask for the source type:
    - local Excel file
    - automatic portal download
-2. Read the Excel file into a pandas dataframe.
-3. Build base table dataframes:
+2. Optionally filter rows by visit date.
+3. Read the Excel file into a pandas dataframe.
+4. Build base table dataframes:
    - employees
    - stores
    - products
    - visits
-4. Load base tables into MySQL.
-5. Detect task rows and map them to dynamic `task_*` tables.
-6. Create or alter dynamic task tables as needed.
-7. Load task responses.
-8. Build `survey_responses`.
-9. Load `survey_responses`.
-10. Run database validation rules.
+5. Load base tables into MySQL.
+6. Detect task rows and map them to dynamic `task_*` tables.
+7. Create or alter dynamic task tables as needed.
+8. Load task responses.
+9. Build `survey_responses`.
+10. Load `survey_responses`.
+11. Run database validation rules when validation mode is enabled.
 
 ## Folder Structure
 
@@ -107,6 +129,7 @@ The current manual entrypoint.
 It coordinates:
 
 - source selection
+- optional visit date filtering
 - Excel reading
 - core ETL
 - survey response build/load
