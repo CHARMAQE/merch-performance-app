@@ -15,7 +15,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.smollan.backend.dto.map.StoreMapDetailResponse;
 import com.smollan.backend.dto.map.StoreMapMarkerResponse;
 import com.smollan.backend.dto.mobile.MobileDashboardOverviewResponse;
+import com.smollan.backend.dto.mobile.MobileExecutionStoreSummaryResponse;
 import com.smollan.backend.dto.mobile.MobileLoginRequest;
+import com.smollan.backend.dto.mobile.MobileMerchandiserExecutionResponse;
+import com.smollan.backend.dto.mobile.MobileMerchandiserStoreResponse;
 import com.smollan.backend.dto.mobile.MobileSupervisorResponse;
 import com.smollan.backend.service.MobileService;
 
@@ -54,6 +57,38 @@ public class MobileController {
             @RequestParam(required = false) Integer day
     ) {
         return mobileService.getSupervisorOverview(supervisorId, year, month, day);
+    }
+
+    @GetMapping("/merchandisers")
+    public List<MobileMerchandiserExecutionResponse> getMerchandiserExecution(
+            @RequestParam Long supervisorId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer day
+    ) {
+        return mobileService.getMerchandiserExecution(supervisorId, year, month, day);
+    }
+
+    @GetMapping("/merchandisers/{employeeCode}/stores")
+    public List<MobileMerchandiserStoreResponse> getMerchandiserStores(
+            @PathVariable String employeeCode,
+            @RequestParam Long supervisorId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer day
+    ) {
+        return mobileService.getMerchandiserStores(supervisorId, employeeCode, year, month, day);
+    }
+
+    @GetMapping("/execution-stores")
+    public List<MobileExecutionStoreSummaryResponse> getExecutionStores(
+            @RequestParam Long supervisorId,
+            @RequestParam String type,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer day
+    ) {
+        return mobileService.getExecutionStores(supervisorId, type, year, month, day);
     }
 
     @GetMapping("/stores/{storeCode}")

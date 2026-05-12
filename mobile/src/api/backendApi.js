@@ -77,6 +77,60 @@ export function getSupervisorDashboardOverview(supervisorId, filters = {}) {
   return request(`/api/mobile/overview?${params.toString()}`);
 }
 
+export function getSupervisorMerchandiserExecution(supervisorId, filters = {}) {
+  const params = new URLSearchParams();
+  params.set("supervisorId", String(supervisorId));
+
+  if (filters.year) {
+    params.set("year", String(filters.year));
+  }
+  if (filters.month) {
+    params.set("month", String(filters.month));
+  }
+  if (filters.day) {
+    params.set("day", String(filters.day));
+  }
+
+  return request(`/api/mobile/merchandisers?${params.toString()}`);
+}
+
+export function getSupervisorMerchandiserStores(supervisorId, employeeCode, filters = {}) {
+  const params = new URLSearchParams();
+  params.set("supervisorId", String(supervisorId));
+
+  if (filters.year) {
+    params.set("year", String(filters.year));
+  }
+  if (filters.month) {
+    params.set("month", String(filters.month));
+  }
+  if (filters.day) {
+    params.set("day", String(filters.day));
+  }
+
+  return request(
+    `/api/mobile/merchandisers/${encodeURIComponent(employeeCode)}/stores?${params.toString()}`
+  );
+}
+
+export function getSupervisorExecutionStores(supervisorId, type, filters = {}) {
+  const params = new URLSearchParams();
+  params.set("supervisorId", String(supervisorId));
+  params.set("type", type);
+
+  if (filters.year) {
+    params.set("year", String(filters.year));
+  }
+  if (filters.month) {
+    params.set("month", String(filters.month));
+  }
+  if (filters.day) {
+    params.set("day", String(filters.day));
+  }
+
+  return request(`/api/mobile/execution-stores?${params.toString()}`);
+}
+
 export function getStores() {
   return request("/api/map/stores");
 }
