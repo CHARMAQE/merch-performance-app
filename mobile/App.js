@@ -3,12 +3,14 @@ import { useEffect, useState } from "react";
 import { SafeAreaView, View } from "react-native";
 import {
   getSupervisorDashboardOverview,
+  getSupervisorMerchandiserExecution,
   getSupervisorStores,
 } from "./src/api/backendApi";
 import { TabButton } from "./src/components/TabButton";
 import { REPORT_YEAR } from "./src/constants/appConstants";
 import { DashboardScreen } from "./src/screens/DashboardScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
+import { MerchandiserExecutionScreen } from "./src/screens/MerchandiserExecutionScreen";
 import { StoreMapScreen } from "./src/screens/StoreMapScreen";
 import { styles } from "./src/styles/appStyles";
 
@@ -18,6 +20,7 @@ export default function App() {
   const [selectedMonth, setSelectedMonth] = useState(4);
   const [selectedDay, setSelectedDay] = useState(null);
   const [overview, setOverview] = useState(null);
+  const [merchandisers, setMerchandisers] = useState([]);
   const [stores, setStores] = useState([]);
   const [selectedStore, setSelectedStore] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,6 +30,7 @@ export default function App() {
     setSupervisor(null);
     setActiveScreen("home");
     setOverview(null);
+    setMerchandisers([]);
     setStores([]);
     setSelectedStore(null);
     setError("");
@@ -37,17 +41,30 @@ export default function App() {
       setIsLoading(true);
       setError("");
 
-      const [overviewResult, storesResult] = await Promise.allSettled([
+      const filters = {
+        year: REPORT_YEAR,
+        month: selectedMonth,
+        day: selectedDay,
+      };
+
+      const [overviewResult, merchandisersResult, storesResult] = await Promise.allSettled([
         getSupervisorDashboardOverview(supervisor.supervisorId, {
-          year: REPORT_YEAR,
-          month: selectedMonth,
-          day: selectedDay,
+          ...filters,
+        }),
+        getSupervisorMerchandiserExecution(supervisor.supervisorId, {
+          ...filters,
         }),
         getSupervisorStores(supervisor.supervisorId),
       ]);
 
       if (overviewResult.status === "fulfilled") {
         setOverview(overviewResult.value);
+      }
+
+      if (merchandisersResult.status === "fulfilled") {
+        setMerchandisers(
+          Array.isArray(merchandisersResult.value) ? merchandisersResult.value : []
+        );
       }
 
       if (storesResult.status === "fulfilled") {
@@ -57,6 +74,9 @@ export default function App() {
       const messages = [];
       if (overviewResult.status === "rejected") {
         messages.push("Dashboard data failed");
+      }
+      if (merchandisersResult.status === "rejected") {
+        messages.push("Merchandiser data failed");
       }
       if (storesResult.status === "rejected") {
         messages.push("Map stores failed");
@@ -103,6 +123,16 @@ export default function App() {
             onRefresh={loadData}
             onLogout={handleLogout}
           />
+        ) : activeScreen === "merch" ? (
+          <MerchandiserExecutionScreen
+            supervisorId={supervisor.supervisorId}
+            merchandisers={merchandisers}
+            overview={overview}
+            isLoading={isLoading}
+            error={error}
+            selectedMonth={selectedMonth}
+            selectedDay={selectedDay}
+          />
         ) : (
           <StoreMapScreen
             supervisorId={supervisor.supervisorId}
@@ -120,6 +150,11 @@ export default function App() {
           label="Dashboard"
           isActive={activeScreen === "home"}
           onPress={() => setActiveScreen("home")}
+        />
+        <TabButton
+          label="Merch"
+          isActive={activeScreen === "merch"}
+          onPress={() => setActiveScreen("merch")}
         />
         <TabButton
           label="Map"
