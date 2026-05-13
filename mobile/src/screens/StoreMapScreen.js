@@ -25,6 +25,7 @@ import {
 import { colors } from "../constants/colors";
 import { styles } from "../styles/appStyles";
 import { formatDate, formatNumber, formatPercentage } from "../utils/formatters";
+import { sortBySearchScore } from "../utils/search";
 
 export function StoreMapScreen({
   supervisorId,
@@ -131,17 +132,16 @@ export function StoreMapScreen({
   );
 
   const matchingStores = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    if (!query || selectedStore) {
+    if (!searchTerm.trim() || selectedStore) {
       return [];
     }
 
-    return validStores
-      .filter((store) => {
-        const haystack = `${store.storeName || ""} ${store.storeCode || ""}`.toLowerCase();
-        return haystack.includes(query);
-      })
-      .slice(0, 6);
+    return sortBySearchScore(validStores, searchTerm, (store) => [
+      store.storeCode,
+      store.storeName,
+      store.storeCity,
+      store.storeFormat,
+    ]).slice(0, 6);
   }, [searchTerm, selectedStore, validStores]);
 
   function getStoreCoordinate(store) {
@@ -354,7 +354,10 @@ export function StoreMapScreen({
                 <Text style={styles.mapSearchResultName} numberOfLines={1}>
                   {store.storeName}
                 </Text>
-                <Text style={styles.mapSearchResultCode}>{store.storeCode}</Text>
+                <Text style={styles.mapSearchResultCode} numberOfLines={1}>
+                  {store.storeCode}
+                  {store.storeCity ? ` - ${store.storeCity}` : ""}
+                </Text>
               </Pressable>
             ))}
           </View>

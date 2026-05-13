@@ -1,4 +1,4 @@
-const LAN_API_BASE = "http://192.168.0.124:9000";
+const LAN_API_BASE = "http://192.168.100.198:9000";
 const REQUEST_TIMEOUT_MS = 30000;
 
 export const API_BASE = LAN_API_BASE;

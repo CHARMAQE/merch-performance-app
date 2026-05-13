@@ -24,6 +24,20 @@ Thumbs.db
 # Logs / debug
 *.log
 
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.toc
+*.synctex.gz
+Report/cover_preview.png
+Report/consignes_page-*.png
+Report/CONSIGNES_rapport_PFE.txt
+Report/Affectation_Encadrement_BDIoT_25_26.txt
+
 data-engineering/debug_failure.html
 data-engineering/debug_failure.png
 data-engineering/debug_timeout.html

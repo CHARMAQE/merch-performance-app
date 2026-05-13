@@ -171,45 +171,49 @@ export function MerchandiserExecutionScreen({
   return (
     <View style={styles.merchScreen}>
       <View style={styles.merchTopSearchPanel}>
-        <View style={styles.merchSearchBox}>
-          <Text style={styles.merchSearchLabel}>Search merchandiser</Text>
-          <TextInput
-            style={styles.merchTopSearchInput}
-            value={searchTerm}
-            onChangeText={handleSearchChange}
-            placeholder="Name, code, or city"
-            placeholderTextColor={colors.muted}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {searchTerm ? (
-            <Pressable
-              style={styles.merchSearchClear}
-              onPress={() => {
-                setSearchTerm("");
-              }}
-            >
-              <Text style={styles.merchSearchClearText}>Clear</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        {selectedMerchandiser || selectedExecutionType ? (
+          <Pressable
+            style={styles.merchTopBackNav}
+            onPress={selectedMerchandiser ? closeMerchandiserStores : closeExecutionStores}
+          >
+            <Text style={styles.merchTopBackIcon}>{"<"}</Text>
+            <Text style={styles.merchTopBackText}>Merch</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.merchSearchBox}>
+            <Text style={styles.merchSearchLabel}>Search merchandiser</Text>
+            <TextInput
+              style={styles.merchTopSearchInput}
+              value={searchTerm}
+              onChangeText={handleSearchChange}
+              placeholder="Name, code, or city"
+              placeholderTextColor={colors.muted}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {searchTerm ? (
+              <Pressable
+                style={styles.merchSearchClear}
+                onPress={() => {
+                  setSearchTerm("");
+                }}
+              >
+                <Text style={styles.merchSearchClearText}>Clear</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.merchScrollContent}>
         {selectedMerchandiser ? (
           <View style={styles.merchSearchModeHeader}>
-            <Pressable style={styles.merchBackNav} onPress={closeMerchandiserStores}>
-              <Text style={styles.merchBackNavText}>Merch list</Text>
-            </Pressable>
             <Text style={styles.eyebrow}>MERCH STORES</Text>
             <Text style={styles.title}>{selectedMerchandiser.username}</Text>
             <Text style={styles.bodyText}>{selectedMerchandiser.employeeCode}</Text>
           </View>
         ) : selectedExecutionType ? (
           <View style={styles.merchSearchModeHeader}>
-            <Pressable style={styles.merchBackNav} onPress={closeExecutionStores}>
-              <Text style={styles.merchBackNavText}>Merch overview</Text>
-            </Pressable>
             <Text style={styles.eyebrow}>MONTH TO DATE</Text>
             <Text style={styles.title}>{selectedExecutionTitle}</Text>
             <Text style={styles.bodyText}>{periodLabel}</Text>

@@ -331,17 +331,30 @@ export const styles = StyleSheet.create({
   merchSearchModeHeader: {
     marginBottom: 4,
   },
-  merchBackNav: {
-    alignSelf: "flex-start",
-    marginBottom: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: colors.navySoft,
+  merchTopBackNav: {
+    minHeight: 58,
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    gap: 8,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: colors.navy,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  merchBackNavText: {
-    color: colors.navy,
-    fontSize: 12,
+  merchTopBackIcon: {
+    color: "#ffffff",
+    fontSize: 22,
+    fontWeight: "900",
+    lineHeight: 24,
+  },
+  merchTopBackText: {
+    color: "#ffffff",
+    fontSize: 15,
     fontWeight: "900",
   },
   merchList: {
