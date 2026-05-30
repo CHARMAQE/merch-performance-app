@@ -96,6 +96,35 @@ CREATE TABLE IF NOT EXISTS survey_responses (
 );
 
 -- ============================================
+-- ETL AUDIT TABLES
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS etl_run_log (
+    run_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    source_type VARCHAR(40) NOT NULL,
+    source_mode VARCHAR(40) NULL,
+    file_name VARCHAR(255) NULL,
+    file_path TEXT NULL,
+    date_from DATE NULL,
+    date_to DATE NULL,
+    rows_read INT NULL,
+    rows_loaded INT NULL,
+    rows_inserted INT NULL,
+    rows_updated INT NULL,
+    affected_visits INT NULL,
+    survey_responses INT NULL,
+    validation_enabled TINYINT(1) NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL,
+    error_message TEXT NULL,
+    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    finished_at DATETIME NULL,
+    INDEX idx_etl_run_source_type (source_type),
+    INDEX idx_etl_run_status (status),
+    INDEX idx_etl_run_started_at (started_at),
+    INDEX idx_etl_run_date_range (date_from, date_to)
+);
+
+-- ============================================
 -- VALIDATION TABLES
 -- ============================================
 

@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import {
-  getSupervisorExecutionStores,
   getSupervisorMerchandiserStores,
 } from "../api/backendApi";
-import { MONTHS, REPORT_YEAR } from "../constants/appConstants";
+import { REPORT_YEAR } from "../constants/appConstants";
 import { colors } from "../constants/colors";
 import { styles } from "../styles/appStyles";
 import { formatDate, formatNumber } from "../utils/formatters";
@@ -18,36 +17,17 @@ export function MerchandiserExecutionScreen({
   error,
   selectedMonth,
   selectedDay,
+  startDate,
+  endDate,
+  storeFormatGroup = "ALL",
+  onStoreFormatGroupChange,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [storeStatusFilter, setStoreStatusFilter] = useState("all");
   const [selectedMerchandiser, setSelectedMerchandiser] = useState(null);
   const [selectedMerchandiserStores, setSelectedMerchandiserStores] = useState([]);
-  const [selectedExecutionType, setSelectedExecutionType] = useState("");
-  const [coveredStores, setCoveredStores] = useState([]);
-  const [deviationStores, setDeviationStores] = useState([]);
-  const [isExecutionStoresLoading, setIsExecutionStoresLoading] = useState(false);
-  const [executionStoresError, setExecutionStoresError] = useState("");
   const [isStoresLoading, setIsStoresLoading] = useState(false);
   const [storesError, setStoresError] = useState("");
-  const totalCoveredExecutions = coveredStores.reduce(
-    (total, store) => total + (store.executionCount || 0),
-    0
-  );
-  const totalDeviationExecutions = deviationStores.reduce(
-    (total, store) => total + (store.executionCount || 0),
-    0
-  );
-  const selectedExecutionStores =
-    selectedExecutionType === "covered" ? coveredStores : deviationStores;
-  const selectedExecutionTitle =
-    selectedExecutionType === "covered" ? "Covered Stores" : "Deviation Stores";
-  const selectedExecutionCountLabel =
-    selectedExecutionType === "covered" ? "Covered count" : "Deviation count";
-  const selectedMonthLabel =
-    MONTHS.find((monthOption) => monthOption.value === selectedMonth)?.label || "Month";
-  const periodLabel = selectedDay
-    ? `${selectedMonthLabel} 1 to ${selectedMonthLabel} ${selectedDay}`
-    : selectedMonthLabel;
   const filteredMerchandisers = useMemo(() => {
     if (!searchTerm.trim()) {
       return merchandisers;
@@ -56,56 +36,20 @@ export function MerchandiserExecutionScreen({
     return sortBySearchScore(merchandisers, searchTerm, (merchandiser) => [
       merchandiser.employeeCode,
       merchandiser.username,
+      merchandiser.supervisorName,
+      merchandiser.city,
+      merchandiser.region,
       ...(merchandiser.cities || []),
     ]);
   }, [merchandisers, searchTerm]);
+  const filteredSelectedStores = useMemo(
+    () =>
+      selectedMerchandiserStores.filter(
+        (store) => storeStatusFilter === "all" || getStoreStatusKey(store) === storeStatusFilter
+      ),
+    [selectedMerchandiserStores, storeStatusFilter]
+  );
   const isSearchMode = Boolean(searchTerm.trim());
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadExecutionStores() {
-      if (!supervisorId) {
-        return;
-      }
-
-      try {
-        setIsExecutionStoresLoading(true);
-        setExecutionStoresError("");
-
-        const filters = {
-          year: REPORT_YEAR,
-          month: selectedMonth,
-          day: selectedDay,
-        };
-        const [coveredResult, deviationResult] = await Promise.all([
-          getSupervisorExecutionStores(supervisorId, "covered", filters),
-          getSupervisorExecutionStores(supervisorId, "deviation", filters),
-        ]);
-
-        if (isMounted) {
-          setCoveredStores(Array.isArray(coveredResult) ? coveredResult : []);
-          setDeviationStores(Array.isArray(deviationResult) ? deviationResult : []);
-        }
-      } catch (loadExecutionStoresError) {
-        if (isMounted) {
-          setCoveredStores([]);
-          setDeviationStores([]);
-          setExecutionStoresError("Unable to load covered/deviation store lists.");
-        }
-      } finally {
-        if (isMounted) {
-          setIsExecutionStoresLoading(false);
-        }
-      }
-    }
-
-    loadExecutionStores();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [supervisorId, selectedMonth, selectedDay]);
 
   function handleSearchChange(value) {
     setSearchTerm(value);
@@ -116,9 +60,6 @@ export function MerchandiserExecutionScreen({
       setStoresError("");
     }
 
-    if (selectedExecutionType && value.trim()) {
-      setSelectedExecutionType("");
-    }
   }
 
   async function openMerchandiserStores(merchandiser) {
@@ -128,6 +69,7 @@ export function MerchandiserExecutionScreen({
 
     try {
       setSelectedMerchandiser(merchandiser);
+      setStoreStatusFilter("all");
       setIsStoresLoading(true);
       setStoresError("");
 
@@ -135,9 +77,10 @@ export function MerchandiserExecutionScreen({
         supervisorId,
         merchandiser.employeeCode,
         {
-          year: REPORT_YEAR,
-          month: selectedMonth,
-          day: selectedDay,
+          ...(startDate || endDate
+            ? { startDate: startDate || undefined, endDate: endDate || undefined }
+            : { year: REPORT_YEAR, month: selectedMonth, day: selectedDay }),
+          storeFormatGroup,
         }
       );
 
@@ -153,28 +96,17 @@ export function MerchandiserExecutionScreen({
   function closeMerchandiserStores() {
     setSelectedMerchandiser(null);
     setSelectedMerchandiserStores([]);
+    setStoreStatusFilter("all");
     setStoresError("");
-  }
-
-  function openExecutionStores(type) {
-    setSelectedMerchandiser(null);
-    setSelectedMerchandiserStores([]);
-    setStoresError("");
-    setSearchTerm("");
-    setSelectedExecutionType(type);
-  }
-
-  function closeExecutionStores() {
-    setSelectedExecutionType("");
   }
 
   return (
     <View style={styles.merchScreen}>
       <View style={styles.merchTopSearchPanel}>
-        {selectedMerchandiser || selectedExecutionType ? (
+        {selectedMerchandiser ? (
           <Pressable
             style={styles.merchTopBackNav}
-            onPress={selectedMerchandiser ? closeMerchandiserStores : closeExecutionStores}
+            onPress={closeMerchandiserStores}
           >
             <Text style={styles.merchTopBackIcon}>{"<"}</Text>
             <Text style={styles.merchTopBackText}>Merch</Text>
@@ -208,15 +140,9 @@ export function MerchandiserExecutionScreen({
       <ScrollView contentContainerStyle={styles.merchScrollContent}>
         {selectedMerchandiser ? (
           <View style={styles.merchSearchModeHeader}>
-            <Text style={styles.eyebrow}>MERCH STORES</Text>
+            <Text style={styles.eyebrow}>STORES</Text>
             <Text style={styles.title}>{selectedMerchandiser.username}</Text>
             <Text style={styles.bodyText}>{selectedMerchandiser.employeeCode}</Text>
-          </View>
-        ) : selectedExecutionType ? (
-          <View style={styles.merchSearchModeHeader}>
-            <Text style={styles.eyebrow}>MONTH TO DATE</Text>
-            <Text style={styles.title}>{selectedExecutionTitle}</Text>
-            <Text style={styles.bodyText}>{periodLabel}</Text>
           </View>
         ) : isSearchMode ? (
           <View style={styles.merchSearchModeHeader}>
@@ -242,12 +168,27 @@ export function MerchandiserExecutionScreen({
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {selectedMerchandiser ? (
-          <View style={styles.panel}>
-            <View style={styles.panelHeaderRow}>
-              <View>
-                <Text style={styles.panelTitle}>Visited Stores</Text>
-                <Text style={styles.panelSubtitle}>Covered stores and deviations for this merchandiser</Text>
-              </View>
+          <>
+            <View style={styles.statusFilterRow}>
+              {["all", "covered", "deviation", "nonVisited", "rejected"].map((status) => (
+                <Pressable
+                  key={status}
+                  style={[
+                    styles.statusFilterChip,
+                    storeStatusFilter === status ? styles.statusFilterChipActive : null,
+                  ]}
+                  onPress={() => setStoreStatusFilter(status)}
+                >
+                  <Text
+                    style={[
+                      styles.statusFilterText,
+                      storeStatusFilter === status ? styles.statusFilterTextActive : null,
+                    ]}
+                  >
+                    {storeStatusFilterLabel(status)}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
 
             {isStoresLoading ? (
@@ -259,163 +200,90 @@ export function MerchandiserExecutionScreen({
 
             {storesError ? <Text style={styles.errorText}>{storesError}</Text> : null}
 
-            {selectedMerchandiserStores.length > 0 ? (
+            {filteredSelectedStores.length > 0 ? (
               <View style={styles.merchStoreList}>
-                {selectedMerchandiserStores.map((store, index) => (
+                {filteredSelectedStores.map((store, index) => (
                   <View
                     key={`${store.storeCode}-${store.visitDate}-${index}`}
-                    style={[
-                      styles.merchStoreCard,
-                      store.executionStatus === "Deviation" ? styles.merchStoreCardWarning : null,
-                    ]}
+                    style={styles.storeCard}
                   >
-                    <View style={styles.merchHeaderRow}>
+                    <View style={styles.storeRow}>
                       <View style={styles.merchTitleBlock}>
                         <Text style={styles.merchName} numberOfLines={1}>
                           {store.storeName || "Unknown store"}
                         </Text>
-                        <Text style={styles.merchCode}>{store.storeCode}</Text>
+                        <Text style={styles.merchCode}>
+                          {[store.storeCode, store.storeFormat].filter(Boolean).join(" - ")}
+                        </Text>
                       </View>
-                      <View
-                        style={[
-                          styles.statusPill,
-                          store.executionStatus === "Deviation"
-                            ? styles.statusPillWarning
-                            : styles.statusPillGood,
-                        ]}
-                      >
-                        <Text style={styles.statusPillText}>{store.executionStatus}</Text>
+                      <View style={[styles.statusBadge, storeStatusStyle(getStoreStatusKey(store))]}>
+                        <Text style={styles.statusBadgeText}>{store.executionStatus || "Covered"}</Text>
                       </View>
                     </View>
 
                     <Text style={styles.merchCities} numberOfLines={2}>
-                      {[store.storeCity, store.storeFormat, formatDate(store.visitDate)]
+                      {[store.storeCity, store.storeRegion, formatDate(store.visitDate)]
                         .filter(Boolean)
                         .join(" - ")}
                     </Text>
+                    <View style={styles.merchMetricRow}>
+                      <Text style={styles.merchMetric}>{storeVisitTypeLabel(store)}</Text>
+                      {store.callCycleType ? (
+                        <Text style={styles.merchMetric}>{store.callCycleType}</Text>
+                      ) : null}
+                    </View>
+                    {selectedMerchandiser.username || selectedMerchandiser.supervisorName ? (
+                      <Text style={styles.merchMetric}>
+                        {[selectedMerchandiser.username, selectedMerchandiser.supervisorName]
+                          .filter(Boolean)
+                          .join(" - ")}
+                      </Text>
+                    ) : null}
                     {store.deviationReason ? (
                       <Text style={styles.merchReasons} numberOfLines={2}>
                         Reason: {store.deviationReason}
+                      </Text>
+                    ) : null}
+                    {shouldShowTaskCompletion(store.taskCompletionRate) ? (
+                      <Text style={styles.merchReasons}>
+                        Task Completion {Math.round(Number(store.taskCompletionRate || 0))}%
                       </Text>
                     ) : null}
                   </View>
                 ))}
               </View>
             ) : !isStoresLoading ? (
-              <Text style={styles.bodyText}>No store details found for this merchandiser.</Text>
+              <Text style={styles.bodyText}>No stores found for this filter.</Text>
             ) : null}
-          </View>
-        ) : selectedExecutionType ? (
-          <View style={styles.panel}>
-            <View style={styles.panelHeaderRow}>
-              <View>
-                <Text style={styles.panelTitle}>{selectedExecutionTitle}</Text>
-                <Text style={styles.panelSubtitle}>
-                  Stores sorted by execution count in the selected period
-                </Text>
-              </View>
-              <View style={styles.reportBadge}>
-                <Text style={styles.reportBadgeText}>
-                  {formatNumber(selectedExecutionStores.length)}
-                </Text>
-              </View>
-            </View>
+          </>
+        ) : null}
 
-            {isExecutionStoresLoading ? (
-              <View style={styles.inlineState}>
-                <ActivityIndicator color={colors.navy} />
-                <Text style={styles.bodyText}>Loading store list...</Text>
-              </View>
-            ) : null}
-
-            {executionStoresError ? <Text style={styles.errorText}>{executionStoresError}</Text> : null}
-
-            {selectedExecutionStores.length > 0 ? (
-              <View style={styles.merchStoreList}>
-                {selectedExecutionStores.map((store) => (
-                  <View
-                    key={store.storeCode}
+        {!selectedMerchandiser ? (
+          <>
+            <View style={styles.statusFilterRow}>
+              {["all", "gt", "mt"].map((channel) => (
+                <Pressable
+                  key={channel}
+                  style={[
+                    styles.statusFilterChip,
+                    normalizeStoreFormatGroup(storeFormatGroup) === channel.toUpperCase()
+                      ? styles.statusFilterChipActive
+                      : null,
+                  ]}
+                  onPress={() => onStoreFormatGroupChange?.(channel.toUpperCase())}
+                >
+                  <Text
                     style={[
-                      styles.merchStoreCard,
-                      selectedExecutionType === "deviation"
-                        ? styles.merchStoreCardWarning
+                      styles.statusFilterText,
+                      normalizeStoreFormatGroup(storeFormatGroup) === channel.toUpperCase()
+                        ? styles.statusFilterTextActive
                         : null,
                     ]}
                   >
-                    <View style={styles.merchHeaderRow}>
-                      <View style={styles.merchTitleBlock}>
-                        <Text style={styles.merchName} numberOfLines={1}>
-                          {store.storeName || "Unknown store"}
-                        </Text>
-                        <Text style={styles.merchCode}>{store.storeCode}</Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.statusPill,
-                          selectedExecutionType === "deviation"
-                            ? styles.statusPillWarning
-                            : styles.statusPillGood,
-                        ]}
-                      >
-                        <Text style={styles.statusPillLabel}>{selectedExecutionCountLabel}</Text>
-                        <Text style={styles.statusPillText}>
-                          {formatNumber(store.executionCount)}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Text style={styles.merchCities} numberOfLines={2}>
-                      {[store.storeCity, store.storeFormat, formatDate(store.latestVisitDate)]
-                        .filter(Boolean)
-                        .join(" - ")}
-                    </Text>
-                    <Text style={styles.merchMetric}>
-                      Merchandisers {formatNumber(store.merchandiserCount)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : !isExecutionStoresLoading ? (
-              <Text style={styles.bodyText}>No stores found for this period.</Text>
-            ) : null}
-          </View>
-        ) : !isSearchMode ? (
-          <View style={styles.statsGrid}>
-            <Pressable style={styles.statCard} onPress={() => openExecutionStores("covered")}>
-              <Text style={styles.statLabel}>Covered</Text>
-              <Text style={styles.statValue}>{formatNumber(totalCoveredExecutions)}</Text>
-              <Text style={styles.statDetail}>
-                {formatNumber(coveredStores.length)} stores
-              </Text>
-            </Pressable>
-            <Pressable style={styles.statCard} onPress={() => openExecutionStores("deviation")}>
-              <Text style={styles.statLabel}>Deviations</Text>
-              <Text style={styles.statValue}>{formatNumber(totalDeviationExecutions)}</Text>
-              <Text style={styles.statDetail}>
-                {formatNumber(deviationStores.length)} stores
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        {!selectedMerchandiser && !selectedExecutionType ? (
-          <View style={styles.panel}>
-            <View style={styles.panelHeaderRow}>
-              <View>
-                <Text style={styles.panelTitle}>
-                  {isSearchMode ? "Matching Merchandisers" : "Merchandiser Execution"}
-                </Text>
-                <Text style={styles.panelSubtitle}>
-                  {isSearchMode
-                    ? "Search mode hides the dashboard to focus on results"
-                    : "Planned visits, covered stores, and deviations"}
-                </Text>
-              </View>
-              <View style={styles.reportBadge}>
-                <Text style={styles.reportBadgeText}>
-                  {formatNumber(filteredMerchandisers.length)}
-                </Text>
-              </View>
+                    {channelFilterLabel(channel)}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
 
             {filteredMerchandisers.length > 0 ? (
@@ -424,31 +292,58 @@ export function MerchandiserExecutionScreen({
                   <Pressable
                     key={merchandiser.employeeCode}
                     onPress={() => openMerchandiserStores(merchandiser)}
-                    style={styles.merchCard}
+                    style={styles.storeCard}
                   >
-                    <View style={styles.merchHeaderRow}>
+                    <View style={styles.storeRow}>
                       <View style={styles.merchTitleBlock}>
                         <Text style={styles.merchName} numberOfLines={1}>
                           {merchandiser.username || "Unknown merchandiser"}
                         </Text>
-                        <Text style={styles.merchCode}>{merchandiser.employeeCode}</Text>
+                        <Text style={styles.merchCode}>
+                          {merchandiser.employeeCode || "No employee code"}
+                        </Text>
+                        {merchandiser.supervisorName ? (
+                          <Text style={styles.merchCode} numberOfLines={1}>
+                            Supervisor: {merchandiser.supervisorName}
+                          </Text>
+                        ) : null}
+                        {getMerchChannelLabel(merchandiser) ? (
+                          <Text style={styles.merchCode}>
+                            {getMerchChannelLabel(merchandiser)}
+                          </Text>
+                        ) : null}
                       </View>
                     </View>
 
                     <View style={styles.merchMetricRow}>
                       <Text style={styles.merchMetric}>
-                        Planned {formatNumber(merchandiser.plannedVisits)}
+                        Planned: {formatNumber(merchandiser.plannedVisits)}
+                      </Text>
+                      {Number(merchandiser.adhocVisits || 0) > 0 ? (
+                        <Text style={styles.merchMetric}>
+                          Adhoc: {formatNumber(merchandiser.adhocVisits)}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.merchMetric}>
+                        Executed: {formatNumber(merchandiser.executedVisits ?? merchandiser.storesCovered)}
+                      </Text>
+                    </View>
+                    <View style={styles.merchMetricRow}>
+                      <Text style={styles.merchMetric}>
+                        Non Visited: {formatNumber(merchandiser.nonVisitedVisits)}
                       </Text>
                       <Text style={styles.merchMetric}>
-                        Covered {formatNumber(merchandiser.storesCovered)}
+                        Dev: {formatNumber(merchandiser.deviationVisits)}
                       </Text>
                       <Text style={styles.merchMetric}>
-                        Dev {formatNumber(merchandiser.deviationVisits)}
+                        Reject: {formatNumber(merchandiser.rejectedVisits)}
                       </Text>
                     </View>
 
                     <Text style={styles.merchCities} numberOfLines={2}>
-                      {(merchandiser.cities || []).join(", ") || "No city captured"}
+                      {[merchandiser.city || merchandiser.region, ...(merchandiser.cities || [])]
+                        .filter(Boolean)
+                        .join(" - ") || "No city captured"}
                     </Text>
                   </Pressable>
                 ))}
@@ -456,9 +351,79 @@ export function MerchandiserExecutionScreen({
             ) : (
               <Text style={styles.bodyText}>No merchandiser found for this filter.</Text>
             )}
-          </View>
+          </>
         ) : null}
       </ScrollView>
     </View>
   );
+}
+
+function storeStatusStyle(status) {
+  if (status === "nonVisited") return styles.statusBadgeNonVisited;
+  if (status === "deviation") return styles.statusBadgeDeviation;
+  if (status === "rejected") return styles.statusBadgeRejected;
+  return styles.statusBadgeCovered;
+}
+
+function channelFilterLabel(channel) {
+  if (channel === "gt") return "GT";
+  if (channel === "mt") return "MT";
+  return "All";
+}
+
+function storeStatusFilterLabel(status) {
+  if (status === "covered") return "Covered";
+  if (status === "deviation") return "Deviation";
+  if (status === "nonVisited") return "Non Visited";
+  if (status === "rejected") return "Rejected";
+  return "All";
+}
+
+function getStoreStatusKey(store) {
+  if (store?.executionStatus === "Rejected") return "rejected";
+  if (store?.executionStatus === "Deviation") return "deviation";
+  if (store?.executionStatus === "Non Visited") return "nonVisited";
+  return "covered";
+}
+
+function storeVisitTypeLabel(store) {
+  if (store?.isAdhoc) return "Adhoc";
+  if (store?.isPlanned) return "Planned";
+  return "Visit type not available";
+}
+
+function getMerchChannelLabel(merchandiser) {
+  return getMerchChannels(merchandiser).join(" / ");
+}
+
+function getMerchChannels(merchandiser) {
+  const formats = Array.isArray(merchandiser.storeFormats)
+    ? merchandiser.storeFormats
+    : merchandiser.storeFormat
+      ? [merchandiser.storeFormat]
+      : [];
+
+  const hasGt = formats.some((format) => String(format).trim().toUpperCase() === "GROCERY");
+  const hasMt = formats.some((format) => {
+    const normalized = String(format).trim().toUpperCase();
+    return normalized && normalized !== "GROCERY";
+  });
+
+  return [hasGt ? "GT" : null, hasMt ? "MT" : null].filter(Boolean);
+}
+
+function normalizeStoreFormatGroup(value) {
+  if (value === "GT" || value === "MT") {
+    return value;
+  }
+
+  return "ALL";
+}
+
+function shouldShowTaskCompletion(value) {
+  if (value === null || value === undefined || value === "") {
+    return false;
+  }
+
+  return Number(value) < 100;
 }

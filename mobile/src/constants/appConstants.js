@@ -1,4 +1,5 @@
 export const REPORT_YEAR = 2026;
+export const DEFAULT_REPORT_MONTH = 5;
 
 export const MOROCCO_REGION = {
   latitude: 31.7917,

@@ -1,0 +1,128 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+
+\geometry{left=2.5cm,right=2.5cm,top=2.4cm,bottom=2.4cm}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\sloppy
+
+\begin{document}
+
+\begin{center}
+    {\Large \textbf{Etat d'avancement du Projet de Fin d'Etudes}}\\[0.15cm]
+    {\large \textbf{et proposition de plan du rapport}}\\[0.35cm]
+    {\normalsize CHARMAQE Hamza -- Master Big Data et Internet des Objets}\\
+    {\normalsize Stage PFE chez Smollan Morocco}
+\end{center}
+
+\section*{1. Proposition de titre du projet}
+
+\textbf{Conception d'une plateforme intelligente de suivi et d'analyse des activites terrain pour le projet Unilever chez Smollan Morocco}
+
+\section*{2. Contexte du projet}
+
+Dans le cadre des operations de merchandising terrain realisees pour le projet Unilever chez Smollan Morocco, les equipes operationnelles utilisent quotidiennement des fichiers Excel exportes depuis une plateforme interne afin d'assurer le suivi des visites, des magasins, des taches d'execution et des activites des merchandisers.
+
+Une partie importante du controle et de l'analyse de ces donnees reste actuellement realisee manuellement, ce qui entraine plusieurs difficultes liees au suivi operationnel, a la visibilite sur les KPI et a l'identification des anomalies terrain.
+
+Dans ce contexte, le projet vise a concevoir une plateforme centralisee permettant d'automatiser le traitement des donnees terrain, d'ameliorer le suivi operationnel et de renforcer la visibilite sur les performances des activites de merchandising.
+
+\section*{3. Travaux realises}
+
+\subsection*{Data Engineering et centralisation des donnees}
+
+\begin{itemize}
+    \item Developpement de pipelines ETL en Python pour automatiser le traitement des fichiers Excel quotidiens.
+    \item Mise en place d'une base de donnees MySQL centralisee.
+    \item Conception d'un modele de donnees structurant les informations liees aux visites, magasins, produits et activites terrain.
+\end{itemize}
+
+\subsection*{Business Intelligence et supervision operationnelle}
+
+\begin{itemize}
+    \item Developpement de dashboards Power BI pour le suivi des operations terrain.
+    \item Mise en place de plusieurs KPI operationnels tels que :
+    \begin{itemize}
+        \item Coverage Rate.
+        \item Task Completion Rate.
+        \item Productivity Score.
+        \item Deviation Rate.
+        \item Rejection Rate.
+        \item Non Visited Rate.
+        \item Problematic Visits.
+        \item Start Time.
+        \item End Time.
+        \item Work Duration.
+    \end{itemize}
+\end{itemize}
+
+\textbf{Executive Dashboard}
+
+Cette page permet le suivi global des operations terrain a travers :
+
+\begin{itemize}
+    \item les KPI de couverture .
+    \item les problemes d'execution .
+    \item les deviations .
+    \item ainsi qu'une vue d'ensemble operationnelle.
+\end{itemize}
+
+\textbf{Merchandiser Performance Intelligence}
+
+Cette page est dediee au suivi des performances des merchandisers et inclut notamment :
+
+\begin{itemize}
+    \item l'analyse de productivite .
+    \item le suivi des durees d'execution .
+    \item les tendances de couverture .
+    \item ainsi que l'identification des visites problematiques.
+\end{itemize}
+
+\subsection*{Validation operationnelle}
+
+\begin{itemize}
+    \item Mise en place de premieres regles de validation afin de detecter certaines incoherences dans les donnees terrain.
+    \item Developpement de mecanismes de detection des anomalies operationnelles et de certaines incoherences GPS.
+\end{itemize}
+
+\subsection*{Developpement applicatif}
+
+\begin{itemize}
+    \item Mise en place des bases d'un backend Spring Boot.
+    \item Developpement initial d'une application mobile de supervision.
+    \item Developpement initial d'une plateforme de validation operationnelle.
+\end{itemize}
+
+\section*{4. Travaux actuellement en cours}
+
+Les travaux actuellement en cours concernent principalement :
+
+\begin{itemize}
+    \item l'ajout de nouvelles regles de validation.
+    \item l'amelioration de la plateforme mobile.
+    \item la finalisation de certains dashboards Power BI.
+    \item la gestion de l'authentification et des droits d'acces dans l'application.
+    \item l'orchestration des traitements avec Airflow ou Prefect .
+    \item ainsi que la redaction du rapport final.
+\end{itemize}
+
+\section*{5. Proposition de plan du rapport final}
+
+\begin{enumerate}
+    \item Introduction generale
+    \item Contexte general du projet et environnement de stage
+    \item Etat de l'existant et limites du suivi actuel
+    \item Analyse des besoins et conception de la solution
+    \item Architecture data et pipeline ETL
+    \item Business Intelligence et tableaux de bord operationnels
+    \item Backend, application mobile et integration
+    \item Tests, resultats, limites et perspectives
+    \item Conclusion generale
+\end{enumerate}
+
+
+
+\end{document}

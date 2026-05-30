@@ -19,6 +19,71 @@ export const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 100,
   },
+  dashboardHero: {
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: colors.navy,
+  },
+  heroEyebrow: {
+    color: "#d8d7ff",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  dashboardTitle: {
+    marginTop: 8,
+    color: colors.white,
+    fontSize: 25,
+    fontWeight: "900",
+  },
+  dashboardSubtitle: {
+    marginTop: 5,
+    color: "#d8d7ff",
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 20,
+  },
+  coverageBlock: {
+    marginTop: 18,
+    padding: 13,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  coverageHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  coverageLabel: {
+    color: "#d8d7ff",
+    fontSize: 12,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  coverageValue: {
+    color: colors.white,
+    fontSize: 24,
+    fontWeight: "900",
+  },
+  coverageTrack: {
+    height: 8,
+    overflow: "hidden",
+    marginTop: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.22)",
+  },
+  coverageFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: colors.orange,
+  },
+  coverageMeta: {
+    marginTop: 8,
+    color: "#eeeeff",
+    fontSize: 12,
+    fontWeight: "800",
+  },
   loginPanel: {
     padding: 22,
     borderRadius: 18,
@@ -59,11 +124,11 @@ export const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: colors.navy,
-    backgroundColor: "#ffffff",
+    borderColor: "rgba(255,255,255,0.35)",
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
   logoutButtonText: {
-    color: colors.navy,
+    color: colors.white,
     fontSize: 12,
     fontWeight: "900",
   },
@@ -130,6 +195,12 @@ export const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "900",
   },
+  selectedPeriodText: {
+    marginBottom: 4,
+    color: colors.navy,
+    fontSize: 13,
+    fontWeight: "900",
+  },
   filterLabel: {
     marginTop: 10,
     marginBottom: 8,
@@ -140,6 +211,22 @@ export const styles = StyleSheet.create({
   filterRow: {
     gap: 8,
     paddingRight: 12,
+  },
+  dateRangeRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  dateInput: {
+    flex: 1,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "#ffffff",
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "800",
   },
   filterChip: {
     minWidth: 48,
@@ -270,6 +357,104 @@ export const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "900",
   },
+  metricCard: {
+    width: "47%",
+    minHeight: 100,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  metricLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  metricValue: {
+    marginTop: 8,
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: "900",
+  },
+  metricValueSuccess: {
+    color: colors.success,
+  },
+  metricValueWarning: {
+    color: colors.orange,
+  },
+  metricValueCritical: {
+    color: colors.danger,
+  },
+  focusList: {
+    gap: 11,
+  },
+  focusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 4,
+  },
+  focusDotWarning: {
+    width: 12,
+    height: 12,
+    borderRadius: 999,
+    backgroundColor: colors.orange,
+  },
+  focusDotGood: {
+    width: 12,
+    height: 12,
+    borderRadius: 999,
+    backgroundColor: colors.success,
+  },
+  focusDotMuted: {
+    width: 12,
+    height: 12,
+    borderRadius: 999,
+    backgroundColor: colors.border,
+  },
+  focusTextBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  focusTitle: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  focusValue: {
+    marginTop: 2,
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  quickActionGrid: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 18,
+  },
+  quickActionCard: {
+    flex: 1,
+    minHeight: 82,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  quickActionLabel: {
+    color: colors.orange,
+    fontSize: 12,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  quickActionTitle: {
+    marginTop: 8,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "900",
+  },
   merchScreen: {
     flex: 1,
   },
@@ -367,6 +552,13 @@ export const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: "#ffffff",
   },
+  merchandiserCard: {
+    padding: 13,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "#ffffff",
+  },
   merchCardWarning: {
     borderColor: "#fed7aa",
     backgroundColor: "#fff8f1",
@@ -430,6 +622,28 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     lineHeight: 17,
+  },
+  mutedDetailText: {
+    color: colors.muted,
+  },
+  expandedBlock: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  inlineActionButton: {
+    alignSelf: "flex-start",
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: colors.navy,
+  },
+  inlineActionText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: "900",
   },
   warningPill: {
     paddingHorizontal: 9,
@@ -524,6 +738,78 @@ export const styles = StyleSheet.create({
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
+  },
+  storeModeRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  storeModeButton: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  storeModeButtonActive: {
+    borderColor: colors.navy,
+    backgroundColor: colors.navy,
+  },
+  storeModeText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  storeModeTextActive: {
+    color: colors.white,
+  },
+  storeListContent: {
+    padding: 16,
+    paddingTop: 136,
+    paddingBottom: 110,
+  },
+  statusFilterRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 14,
+  },
+  statusFilterChip: {
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  statusFilterChipActive: {
+    borderColor: colors.navy,
+    backgroundColor: colors.navy,
+  },
+  statusFilterText: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  statusFilterTextActive: {
+    color: colors.white,
+  },
+  storeCardList: {
+    gap: 10,
+  },
+  storeCard: {
+    padding: 13,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  storeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 10,
   },
   mapSearchResult: {
     paddingHorizontal: 14,
@@ -675,6 +961,41 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     textTransform: "uppercase",
   },
+  statusBadge: {
+    alignSelf: "flex-start",
+    minWidth: 82,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  coverageStatusBadge: {
+    minWidth: 104,
+  },
+  statusBadgeText: {
+    color: colors.navy,
+    fontSize: 10,
+    fontWeight: "900",
+    textAlign: "center",
+    textTransform: "uppercase",
+  },
+  statusBadgeCovered: {
+    backgroundColor: "#dcfce7",
+  },
+  statusBadgeNonVisited: {
+    backgroundColor: "#fef3c7",
+  },
+  statusBadgeDeviation: {
+    backgroundColor: "#fee2e2",
+  },
+  statusBadgeRejected: {
+    backgroundColor: "#e5e7eb",
+  },
+  statusBadgeGps: {
+    backgroundColor: "#fef08a",
+  },
+  statusBadgeMuted: {
+    backgroundColor: colors.navySoft,
+  },
   osaBlock: {
     marginTop: 10,
     paddingHorizontal: 13,
@@ -732,6 +1053,10 @@ export const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: "#ffffff",
   },
+  storeMetricWarning: {
+    borderColor: "#fcd34d",
+    backgroundColor: "#fffbeb",
+  },
   storeMetricLabel: {
     color: colors.muted,
     fontSize: 11,
@@ -751,6 +1076,38 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
   },
+  sectionHeader: {
+    marginTop: 18,
+    marginBottom: 8,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  issueList: {
+    gap: 10,
+    marginTop: 18,
+  },
+  issueCard: {
+    padding: 13,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  issueTypeBadge: {
+    alignSelf: "flex-start",
+    minWidth: 98,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  emptyStateText: {
+    marginTop: 18,
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: "800",
+    lineHeight: 20,
+  },
   tabs: {
     flexDirection: "row",
     gap: 10,
@@ -762,6 +1119,8 @@ export const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 48,
     paddingVertical: 12,
     borderRadius: 12,
     backgroundColor: colors.navySoft,
@@ -775,5 +1134,24 @@ export const styles = StyleSheet.create({
   },
   tabButtonTextActive: {
     color: "#ffffff",
+  },
+  tabBadge: {
+    position: "absolute",
+    top: 4,
+    right: 8,
+    minWidth: 18,
+    overflow: "hidden",
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: colors.orange,
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  tabBadgeActive: {
+    backgroundColor: colors.white,
+    color: colors.navy,
   },
 });

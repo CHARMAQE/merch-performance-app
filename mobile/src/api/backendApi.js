@@ -1,4 +1,5 @@
-const LAN_API_BASE = "http://192.168.100.198:9000";
+const LAN_API_BASE =
+  process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.1.150:9000";
 const REQUEST_TIMEOUT_MS = 30000;
 
 export const API_BASE = LAN_API_BASE;
@@ -61,52 +62,29 @@ export function getDashboardOverview(filters = {}) {
 }
 
 export function getSupervisorDashboardOverview(supervisorId, filters = {}) {
-  const params = new URLSearchParams();
-  params.set("supervisorId", String(supervisorId));
-
-  if (filters.year) {
-    params.set("year", String(filters.year));
-  }
-  if (filters.month) {
-    params.set("month", String(filters.month));
-  }
-  if (filters.day) {
-    params.set("day", String(filters.day));
-  }
+  const params = buildSupervisorFilterParams(supervisorId, filters);
 
   return request(`/api/mobile/overview?${params.toString()}`);
 }
 
-export function getSupervisorMerchandiserExecution(supervisorId, filters = {}) {
-  const params = new URLSearchParams();
-  params.set("supervisorId", String(supervisorId));
+export function getOverview(filters = {}) {
+  const params = buildSupervisorFilterParams(filters.supervisorId, filters);
+  return request(`/api/mobile/overview?${params.toString()}`);
+}
 
-  if (filters.year) {
-    params.set("year", String(filters.year));
-  }
-  if (filters.month) {
-    params.set("month", String(filters.month));
-  }
-  if (filters.day) {
-    params.set("day", String(filters.day));
-  }
+export function getSupervisorMerchandiserExecution(supervisorId, filters = {}) {
+  const params = buildSupervisorFilterParams(supervisorId, filters);
 
   return request(`/api/mobile/merchandisers?${params.toString()}`);
 }
 
-export function getSupervisorMerchandiserStores(supervisorId, employeeCode, filters = {}) {
-  const params = new URLSearchParams();
-  params.set("supervisorId", String(supervisorId));
+export function getMerchandisers(filters = {}) {
+  const params = buildSupervisorFilterParams(filters.supervisorId, filters);
+  return request(`/api/mobile/merchandisers?${params.toString()}`);
+}
 
-  if (filters.year) {
-    params.set("year", String(filters.year));
-  }
-  if (filters.month) {
-    params.set("month", String(filters.month));
-  }
-  if (filters.day) {
-    params.set("day", String(filters.day));
-  }
+export function getSupervisorMerchandiserStores(supervisorId, employeeCode, filters = {}) {
+  const params = buildSupervisorFilterParams(supervisorId, filters);
 
   return request(
     `/api/mobile/merchandisers/${encodeURIComponent(employeeCode)}/stores?${params.toString()}`
@@ -114,31 +92,42 @@ export function getSupervisorMerchandiserStores(supervisorId, employeeCode, filt
 }
 
 export function getSupervisorExecutionStores(supervisorId, type, filters = {}) {
-  const params = new URLSearchParams();
-  params.set("supervisorId", String(supervisorId));
+  const params = buildSupervisorFilterParams(supervisorId, filters);
   params.set("type", type);
-
-  if (filters.year) {
-    params.set("year", String(filters.year));
-  }
-  if (filters.month) {
-    params.set("month", String(filters.month));
-  }
-  if (filters.day) {
-    params.set("day", String(filters.day));
-  }
 
   return request(`/api/mobile/execution-stores?${params.toString()}`);
 }
 
-export function getStores() {
-  return request("/api/map/stores");
+export function getMerchandiserStores(employeeCode, filters = {}) {
+  const params = buildSupervisorFilterParams(filters.supervisorId, filters);
+  return request(
+    `/api/mobile/merchandisers/${encodeURIComponent(employeeCode)}/stores?${params.toString()}`
+  );
 }
 
-export function getSupervisorStores(supervisorId) {
-  const params = new URLSearchParams();
-  params.set("supervisorId", String(supervisorId));
+export function getSupervisorIssues(supervisorId, filters = {}) {
+  const params = buildSupervisorFilterParams(supervisorId, filters);
+  return request(`/api/mobile/issues?${params.toString()}`);
+}
 
+export function getIssues(filters = {}) {
+  const params = buildSupervisorFilterParams(filters.supervisorId, filters);
+  return request(`/api/mobile/issues?${params.toString()}`);
+}
+
+export function getStores(filters = {}) {
+  const params = buildSupervisorFilterParams(filters.supervisorId, filters);
+  return request(`/api/mobile/stores?${params.toString()}`);
+}
+
+export function getSupervisorStores(supervisorId, filters = {}) {
+  const params = buildSupervisorFilterParams(supervisorId, filters);
+
+  return request(`/api/mobile/stores?${params.toString()}`);
+}
+
+export function getMobileStores(filters = {}) {
+  const params = buildSupervisorFilterParams(filters.supervisorId, filters);
   return request(`/api/mobile/stores?${params.toString()}`);
 }
 
@@ -159,10 +148,47 @@ export function getStoreDetails(storeCode, filters = {}) {
 }
 
 export function getSupervisorStoreDetails(supervisorId, storeCode) {
-  const params = new URLSearchParams();
-  params.set("supervisorId", String(supervisorId));
+  return getStoreDetail(storeCode, { supervisorId });
+}
+
+export function getStoreDetail(storeCode, filters = {}) {
+  const params = buildSupervisorFilterParams(filters.supervisorId, filters);
 
   return request(
     `/api/mobile/stores/${encodeURIComponent(storeCode)}?${params.toString()}`
   );
+}
+
+function buildSupervisorFilterParams(supervisorId, filters = {}) {
+  const params = new URLSearchParams();
+
+  if (supervisorId !== null && supervisorId !== undefined) {
+    params.set("supervisorId", String(supervisorId));
+  }
+  if (filters.startDate) {
+    params.set("startDate", String(filters.startDate));
+  }
+  if (filters.endDate) {
+    params.set("endDate", String(filters.endDate));
+  }
+  if (filters.year) {
+    params.set("year", String(filters.year));
+  }
+  if (filters.month) {
+    params.set("month", String(filters.month));
+  }
+  if (filters.day) {
+    params.set("day", String(filters.day));
+  }
+  if (filters.region) {
+    params.set("region", String(filters.region));
+  }
+  if (filters.storeFormat) {
+    params.set("storeFormat", String(filters.storeFormat));
+  }
+  if (filters.storeFormatGroup) {
+    params.set("storeFormatGroup", String(filters.storeFormatGroup));
+  }
+
+  return params;
 }

@@ -1,5 +1,12 @@
 package com.smollan.backend.service;
 
+import java.math.BigDecimal;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -7,16 +14,35 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import com.smollan.backend.dto.map.StoreMapDetailResponse;
-import com.smollan.backend.dto.map.StoreMapMarkerResponse;
 import com.smollan.backend.dto.mobile.MobileDashboardOverviewResponse;
 import com.smollan.backend.dto.mobile.MobileExecutionStoreSummaryResponse;
+import com.smollan.backend.dto.mobile.MobileIssueResponse;
 import com.smollan.backend.dto.mobile.MobileLoginRequest;
 import com.smollan.backend.dto.mobile.MobileMerchandiserExecutionResponse;
 import com.smollan.backend.dto.mobile.MobileMerchandiserStoreResponse;
+import com.smollan.backend.dto.mobile.MobileStoreCoverageResponse;
+import com.smollan.backend.dto.mobile.MobileStoreDetailResponse;
 import com.smollan.backend.dto.mobile.MobileSupervisorResponse;
 
 @Service
 public class MobileService {
+
+    private static final int GPS_DISTANCE_THRESHOLD_METERS = 250;
+    private static final String NON_VISITED_CONDITION = "(fc.is_done = 0 AND fc.rejection = 0 AND fc.deviation = 0)";
+    private static final String COVERED_VISIT_CONDITION = "(fc.is_done = 1 AND fc.rejection = 0 AND fc.deviation = 0)";
+    private static final String GPS_DISTANCE_CONDITION =
+            "(COALESCE(fc.start_distance_meters, fc.end_distance_meters) > " + GPS_DISTANCE_THRESHOLD_METERS + ")";
+    private static final String LOW_TASK_COMPLETION_CONDITION =
+            "(" + COVERED_VISIT_CONDITION
+                    + " AND COALESCE(fc.task_assigned, 0) > 0"
+                    + " AND COALESCE(fc.task_done, 0) < COALESCE(fc.task_assigned, 0))";
+    private static final String FOLLOW_UP_CONDITION =
+            "(" + NON_VISITED_CONDITION
+                    + " OR fc.rejection = 1"
+                    + " OR fc.deviation = 1"
+                    + " OR " + GPS_DISTANCE_CONDITION
+                    + " OR " + LOW_TASK_COMPLETION_CONDITION
+                    + ")";
 
     private final JdbcTemplate jdbcTemplate;
     private final StoreMapService storeMapService;
@@ -63,102 +89,464 @@ public class MobileService {
                 request.password().trim()
         );
 
-        return supervisors.stream().findFirst();
-    }
-
-    public List<StoreMapMarkerResponse> getSupervisorStores(Long supervisorId) {
-        if (supervisorId == null) {
-            return List.of();
+        if (!supervisors.isEmpty()) {
+            return Optional.of(supervisors.get(0));
         }
 
-        if (isAdmin(supervisorId)) {
-            return storeMapService.getStoreMarkers();
+        // Demo fallback keeps the PFE app usable when seed_supervisors.sql has not been run.
+        if ("1234".equals(request.password().trim())
+                && List.of("admin", "casa_sup", "supervisor").contains(request.username().trim().toLowerCase())) {
+            return Optional.of(new MobileSupervisorResponse(
+                    0L,
+                    "Demo Supervisor",
+                    request.username().trim(),
+                    null,
+                    null,
+                    "All Regions",
+                    "ADMIN"
+            ));
         }
 
-        List<StoreMapMarkerResponse> allMarkers = storeMapService.getStoreMarkers();
-        List<String> assignedStoreCodes = getAssignedStoreCodes(supervisorId);
-
-        if (assignedStoreCodes.isEmpty()) {
-            return List.of();
-        }
-
-        return allMarkers.stream()
-                .filter(marker -> assignedStoreCodes.contains(marker.storeCode()))
-                .toList();
+        return Optional.empty();
     }
 
     public MobileDashboardOverviewResponse getSupervisorOverview(
             Long supervisorId,
+            String startDate,
+            String endDate,
+            String supervisor,
+            String merchandiser,
+            String region,
+            String storeFormat,
             Integer year,
             Integer month,
             Integer day
     ) {
-        if (supervisorId == null) {
-            return emptyOverview();
+        CoverageFilter filter = buildCoverageFilter(
+                supervisorId, startDate, endDate, supervisor, merchandiser, region, storeFormat, year, month, day
+        );
+
+        return jdbcTemplate.query(
+                """
+                SELECT
+                    COALESCE(SUM(fc.is_planned = 1), 0) AS planned_visits,
+                    COALESCE(SUM(fc.is_done = 1), 0) AS executed_visits,
+                    COALESCE(SUM(""" + NON_VISITED_CONDITION + """
+                    ), 0) AS non_visited_visits,
+                    COALESCE(SUM(fc.deviation = 1), 0) AS deviation_visits,
+                    COALESCE(SUM(fc.rejection = 1), 0) AS rejected_visits,
+                    COALESCE(SUM(""" + FOLLOW_UP_CONDITION + """
+                    ), 0) AS problematic_visits,
+                    COALESCE(COUNT(DISTINCT fc.employee_code), 0) AS active_merchandisers,
+                    COALESCE(COUNT(DISTINCT fc.store_code), 0) AS stores,
+                    COALESCE(COUNT(DISTINCT CASE WHEN """ + COVERED_VISIT_CONDITION + """
+                     THEN fc.store_code END), 0) AS covered_stores,
+                    COALESCE(SUM(CASE WHEN """ + COVERED_VISIT_CONDITION + """
+                     AND COALESCE(fc.task_assigned, 0) > 0 THEN COALESCE(fc.task_done, 0) ELSE 0 END), 0) AS task_done,
+                    COALESCE(SUM(CASE WHEN """ + COVERED_VISIT_CONDITION + """
+                     AND COALESCE(fc.task_assigned, 0) > 0 THEN COALESCE(fc.task_assigned, 0) ELSE 0 END), 0) AS task_assigned,
+                    MAX(fc.visit_date) AS latest_visit_date
+                FROM fact_coverage fc
+                WHERE 1 = 1
+                """ + filter.andClause(),
+                rs -> {
+                    if (!rs.next()) {
+                        return emptyOverview();
+                    }
+
+                    long plannedVisits = rs.getLong("planned_visits");
+                    long executedVisits = rs.getLong("executed_visits");
+                    long nonVisitedVisits = rs.getLong("non_visited_visits");
+                    long deviationVisits = rs.getLong("deviation_visits");
+                    long rejectedVisits = rs.getLong("rejected_visits");
+                    long problematicVisits = rs.getLong("problematic_visits");
+                    long stores = rs.getLong("stores");
+                    long coveredStores = rs.getLong("covered_stores");
+                    long activeMerchandisers = rs.getLong("active_merchandisers");
+                    long taskDone = rs.getLong("task_done");
+                    long taskAssigned = rs.getLong("task_assigned");
+                    java.sql.Date latestVisitDate = rs.getDate("latest_visit_date");
+                    LocalDate latestVisitDateValue = latestVisitDate == null ? null : latestVisitDate.toLocalDate();
+
+                    return new MobileDashboardOverviewResponse(
+                            plannedVisits,
+                            executedVisits,
+                            nonVisitedVisits,
+                            deviationVisits,
+                            rejectedVisits,
+                            problematicVisits,
+                            rate(executedVisits, plannedVisits),
+                            rate(nonVisitedVisits, plannedVisits),
+                            rate(deviationVisits, plannedVisits),
+                            rate(rejectedVisits, plannedVisits),
+                            rate(taskDone, taskAssigned),
+                            latestVisitDateValue,
+                            activeMerchandisers,
+                            new MobileDashboardOverviewResponse.TableCounts(
+                                    activeMerchandisers,
+                                    stores,
+                                    0L,
+                                    executedVisits,
+                                    0L
+                            ),
+                            new MobileDashboardOverviewResponse.StoreActivity(
+                                    stores,
+                                    coveredStores,
+                                    nonVisitedVisits,
+                                    executedVisits,
+                                    latestVisitDateValue,
+                                    plannedVisits,
+                                    executedVisits,
+                                    deviationVisits
+                            ),
+                            new MobileDashboardOverviewResponse.DailyReport(
+                                    activeMerchandisers,
+                                    Math.max(0L, executedVisits - coveredStores)
+                            )
+                    );
+                },
+                filter.params().toArray()
+        );
+    }
+
+    public List<MobileMerchandiserExecutionResponse> getMerchandiserExecution(
+            Long supervisorId,
+            String startDate,
+            String endDate,
+            String supervisor,
+            String merchandiser,
+            String region,
+            String storeFormat,
+            String storeFormatGroup,
+            Integer year,
+            Integer month,
+            Integer day
+    ) {
+        CoverageFilter filter = buildCoverageFilter(
+                supervisorId, startDate, endDate, supervisor, merchandiser, region, storeFormat, year, month, day
+        );
+        String storeFormatGroupClause = buildStoreFormatGroupClause(storeFormatGroup);
+
+        return jdbcTemplate.query(
+                """
+                SELECT
+                    fc.employee_code,
+                    MAX(fc.username) AS username,
+                    MAX(COALESCE(fc.l1name, fc.l2name, fc.l3name)) AS supervisor_name,
+                    MAX(fc.store_region) AS region,
+                    MAX(fc.store_city) AS city,
+                    COALESCE(SUM(fc.is_planned = 1), 0) AS planned_visits,
+                    COALESCE(SUM(fc.is_adhoc = 1), 0) AS adhoc_visits,
+                    COALESCE(SUM(fc.is_done = 1), 0) AS executed_visits,
+                    COALESCE(SUM(""" + NON_VISITED_CONDITION + """
+                    ), 0) AS non_visited_visits,
+                    COALESCE(SUM(fc.deviation = 1), 0) AS deviation_visits,
+                    COALESCE(SUM(fc.rejection = 1), 0) AS rejected_visits,
+                    COALESCE(SUM(""" + FOLLOW_UP_CONDITION + """
+                    ), 0) AS problematic_visits,
+                    COALESCE(SUM(CASE WHEN """ + COVERED_VISIT_CONDITION + """
+                     AND COALESCE(fc.task_assigned, 0) > 0 THEN COALESCE(fc.task_done, 0) ELSE 0 END), 0) AS task_done,
+                    COALESCE(SUM(CASE WHEN """ + COVERED_VISIT_CONDITION + """
+                     AND COALESCE(fc.task_assigned, 0) > 0 THEN COALESCE(fc.task_assigned, 0) ELSE 0 END), 0) AS task_assigned,
+                    AVG(fc.time_mm) AS avg_visit_duration,
+                    AVG(COALESCE(fc.start_distance_meters, fc.end_distance_meters)) AS avg_distance_from_store,
+                    COALESCE(COUNT(DISTINCT CASE WHEN """ + COVERED_VISIT_CONDITION + """
+                     THEN fc.store_code END), 0) AS stores_covered,
+                    GROUP_CONCAT(DISTINCT fc.store_city ORDER BY fc.store_city SEPARATOR ', ') AS cities,
+                    GROUP_CONCAT(DISTINCT fc.store_format ORDER BY fc.store_format SEPARATOR ', ') AS store_formats,
+                    MAX(fc.visit_date) AS latest_visit_date
+                FROM fact_coverage fc
+                WHERE 1 = 1
+                """ + filter.andClause() + storeFormatGroupClause + """
+
+                GROUP BY fc.employee_code
+                ORDER BY planned_visits DESC, executed_visits DESC, fc.employee_code
+                LIMIT 100
+                """,
+                (rs, rowNum) -> mapMerchandiserExecution(rs),
+                filter.params().toArray()
+        );
+    }
+
+    public List<MobileStoreCoverageResponse> getCoverageStores(
+            Long supervisorId,
+            String startDate,
+            String endDate,
+            String supervisor,
+            String merchandiser,
+            String region,
+            String storeFormat,
+            Integer year,
+            Integer month,
+            Integer day
+    ) {
+        CoverageFilter filter = buildCoverageFilter(
+                supervisorId, startDate, endDate, supervisor, merchandiser, region, storeFormat, year, month, day
+        );
+
+        return jdbcTemplate.query(
+                """
+                SELECT
+                    fc.store_code,
+                    fc.store_name,
+                    fc.store_city,
+                    fc.store_region,
+                    fc.store_format,
+                    fc.employee_code,
+                    fc.username,
+                    COALESCE(fc.l1name, fc.l2name, fc.l3name) AS supervisor_name,
+                    fc.visit_date,
+                    fc.call_status,
+                    fc.call_cycle_type,
+                    fc.is_planned,
+                    fc.is_done,
+                    """ + NON_VISITED_CONDITION + """
+                     AS not_visited,
+                    fc.deviation,
+                    fc.rejection,
+                    fc.task_assigned,
+                    fc.task_done,
+                    fc.task_per,
+                    fc.reason,
+                    fc.master_latitude,
+                    fc.master_longitude,
+                    fc.start_distance_meters,
+                    fc.end_distance_meters
+                FROM fact_coverage fc
+                WHERE 1 = 1
+                """ + filter.andClause() + """
+
+                ORDER BY fc.visit_date DESC, fc.store_name, fc.store_code
+                LIMIT 500
+                """,
+                (rs, rowNum) -> mapCoverageStore(rs),
+                filter.params().toArray()
+        );
+    }
+
+    public List<MobileIssueResponse> getIssues(
+            Long supervisorId,
+            String startDate,
+            String endDate,
+            String supervisor,
+            String merchandiser,
+            String region,
+            String storeFormat,
+            Integer year,
+            Integer month,
+            Integer day
+    ) {
+        CoverageFilter filter = buildCoverageFilter(
+                supervisorId, startDate, endDate, supervisor, merchandiser, region, storeFormat, year, month, day
+        );
+
+        return jdbcTemplate.query(
+                """
+                SELECT
+                    CASE
+                        WHEN """ + NON_VISITED_CONDITION + """
+                         THEN 'NON_VISITED'
+                        WHEN fc.rejection = 1 THEN 'REJECTED'
+                        WHEN fc.deviation = 1 THEN 'DEVIATION'
+                        WHEN """ + LOW_TASK_COMPLETION_CONDITION + """
+                         THEN 'LOW_TASK_COMPLETION'
+                        WHEN """ + GPS_DISTANCE_CONDITION + """
+                         THEN 'GPS_DISTANCE'
+                        ELSE 'OTHER'
+                    END AS issue_type,
+                    fc.store_code,
+                    fc.store_name,
+                    fc.username,
+                    COALESCE(fc.l1name, fc.l2name, fc.l3name) AS supervisor_name,
+                    fc.store_city,
+                    fc.store_region,
+                    fc.reason,
+                    fc.visit_date,
+                    CASE
+                        WHEN """ + NON_VISITED_CONDITION + """
+                         OR fc.deviation = 1 THEN 'HIGH'
+                        WHEN fc.rejection = 1 THEN 'MEDIUM'
+                        ELSE 'LOW'
+                    END AS severity
+                FROM fact_coverage fc
+                WHERE 1 = 1
+                """ + filter.andClause() + """
+
+                  AND (
+                    """ + NON_VISITED_CONDITION + """
+                    OR fc.rejection = 1
+                    OR fc.deviation = 1
+                    OR """ + GPS_DISTANCE_CONDITION + """
+                    OR """ + LOW_TASK_COMPLETION_CONDITION + """
+                  )
+                ORDER BY fc.visit_date DESC,
+                    CASE
+                        WHEN """ + NON_VISITED_CONDITION + """
+                         THEN 1
+                        WHEN fc.rejection = 1 THEN 2
+                        WHEN fc.deviation = 1 THEN 3
+                        WHEN """ + LOW_TASK_COMPLETION_CONDITION + """
+                         THEN 4
+                        ELSE 5
+                    END,
+                    fc.store_name
+                LIMIT 200
+                """,
+                (rs, rowNum) -> new MobileIssueResponse(
+                        rs.getString("issue_type"),
+                        rs.getString("store_code"),
+                        rs.getString("store_name"),
+                        rs.getString("username"),
+                        rs.getString("supervisor_name"),
+                        rs.getString("store_city"),
+                        rs.getString("store_region"),
+                        rs.getString("reason"),
+                        toLocalDate(rs, "visit_date"),
+                        rs.getString("severity")
+                ),
+                filter.params().toArray()
+        );
+    }
+
+    public List<MobileMerchandiserStoreResponse> getMerchandiserStores(
+            Long supervisorId,
+            String employeeCode,
+            String startDate,
+            String endDate,
+            String storeFormatGroup,
+            Integer year,
+            Integer month,
+            Integer day
+    ) {
+        if (isBlank(employeeCode)) {
+            return List.of();
         }
 
-        DateFilter dateFilter = buildDateFilter(year, month, day);
-        boolean admin = isAdmin(supervisorId);
+        CoverageFilter filter = buildCoverageFilter(
+                supervisorId, startDate, endDate, null, employeeCode, null, null, year, month, day
+        );
+        String storeFormatGroupClause = buildStoreFormatGroupClause(storeFormatGroup);
 
-        if (admin) {
-            return getAdminOverview(dateFilter);
+        return jdbcTemplate.query(
+                """
+                SELECT
+                    fc.store_code,
+                    fc.store_name,
+                    fc.store_city,
+                    fc.store_region,
+                    fc.store_format,
+                    fc.visit_date,
+                    fc.is_planned,
+                    fc.is_adhoc,
+                    fc.call_cycle_type,
+                    fc.deviation,
+                    """ + NON_VISITED_CONDITION + """
+                     AS not_visited,
+                    fc.rejection,
+                    fc.task_assigned,
+                    fc.task_done,
+                    fc.task_per,
+                    fc.reason
+                FROM fact_coverage fc
+                WHERE 1 = 1
+                """ + filter.andClause() + storeFormatGroupClause + """
+
+                ORDER BY fc.visit_date DESC, fc.store_name, fc.store_code
+                LIMIT 300
+                """,
+                (rs, rowNum) -> {
+                    String status = "Covered";
+                    if (rs.getBoolean("not_visited")) {
+                        status = "Non Visited";
+                    } else if (rs.getBoolean("rejection")) {
+                        status = "Rejected";
+                    } else if (rs.getBoolean("deviation")) {
+                        status = "Deviation";
+                    }
+
+                    return new MobileMerchandiserStoreResponse(
+                            rs.getString("store_code"),
+                            rs.getString("store_name"),
+                            rs.getString("store_city"),
+                            rs.getString("store_region"),
+                            rs.getString("store_format"),
+                            toLocalDate(rs, "visit_date"),
+                            status,
+                            rs.getBoolean("is_planned"),
+                            rs.getBoolean("is_adhoc"),
+                            rs.getString("call_cycle_type"),
+                            rs.getString("reason"),
+                            getNullableInteger(rs, "task_assigned"),
+                            getNullableInteger(rs, "task_done"),
+                            getNullableDouble(rs, "task_per")
+                    );
+                },
+                filter.params().toArray()
+        );
+    }
+
+    public List<MobileExecutionStoreSummaryResponse> getExecutionStores(
+            Long supervisorId,
+            String type,
+            Integer year,
+            Integer month,
+            Integer day
+    ) {
+        if (isBlank(type)) {
+            return List.of();
         }
 
-        Long stores = countAssignedStores(supervisorId);
-        Long employees = countForSupervisor("""
-                SELECT COUNT(DISTINCT v.employee_id) AS total_count
-                FROM visits v
-                """, supervisorId, dateFilter);
-        Long visits = countForSupervisor("""
-                SELECT COUNT(*) AS total_count
-                FROM visits v
-                """, supervisorId, dateFilter);
-        Long surveyResponses = countForSupervisor("""
-                SELECT COUNT(*) AS total_count
-                FROM survey_responses sr
-                JOIN visits v ON v.visit_id = sr.visit_id
-                """, supervisorId, dateFilter);
-        Long products = countForSupervisor("""
-                SELECT COUNT(DISTINCT sr.product_code) AS total_count
-                FROM survey_responses sr
-                JOIN visits v ON v.visit_id = sr.visit_id
-                """, supervisorId, dateFilter);
-        Long visitedStores = countForSupervisor("""
-                SELECT COUNT(DISTINCT v.store_id) AS total_count
-                FROM visits v
-                """, supervisorId, dateFilter);
-        Long notVisitedStores = Math.max(0L, stores - visitedStores);
-        java.time.LocalDate latestVisitDate = getLatestVisitDate(supervisorId, dateFilter);
-        Long storesRevisited = countStoresRevisited(supervisorId, dateFilter);
+        String normalizedType = type.trim().toLowerCase();
+        String statusCondition;
+        if ("covered".equals(normalizedType)) {
+            statusCondition = " AND " + COVERED_VISIT_CONDITION;
+        } else if ("deviation".equals(normalizedType) || "deviations".equals(normalizedType)) {
+            statusCondition = " AND fc.deviation = 1";
+        } else {
+            return List.of();
+        }
 
-        return new MobileDashboardOverviewResponse(
-                new MobileDashboardOverviewResponse.TableCounts(
-                        employees,
-                        stores,
-                        products,
-                        visits,
-                        surveyResponses
+        CoverageFilter filter = buildCoverageFilter(
+                supervisorId, null, null, null, null, null, null, year, month, day
+        );
+
+        return jdbcTemplate.query(
+                """
+                SELECT
+                    fc.store_code,
+                    MAX(fc.store_name) AS store_name,
+                    MAX(fc.store_city) AS store_city,
+                    MAX(fc.store_format) AS store_format,
+                    COUNT(*) AS execution_count,
+                    COUNT(DISTINCT fc.employee_code) AS merchandiser_count,
+                    MAX(fc.visit_date) AS latest_visit_date
+                FROM fact_coverage fc
+                WHERE 1 = 1
+                """ + filter.andClause() + statusCondition + """
+
+                GROUP BY fc.store_code
+                ORDER BY execution_count DESC, latest_visit_date DESC, store_name
+                LIMIT 100
+                """,
+                (rs, rowNum) -> new MobileExecutionStoreSummaryResponse(
+                        rs.getString("store_code"),
+                        rs.getString("store_name"),
+                        rs.getString("store_city"),
+                        rs.getString("store_format"),
+                        rs.getLong("execution_count"),
+                        rs.getLong("merchandiser_count"),
+                        toLocalDate(rs, "latest_visit_date")
                 ),
-                new MobileDashboardOverviewResponse.StoreActivity(
-                        stores,
-                        visitedStores,
-                        notVisitedStores,
-                        visits,
-                        latestVisitDate
-                ),
-                new MobileDashboardOverviewResponse.DailyReport(
-                        employees,
-                        storesRevisited
-                )
+                filter.params().toArray()
         );
     }
 
     public Optional<StoreMapDetailResponse> getSupervisorStoreDetails(Long supervisorId, String storeCode) {
-        if (supervisorId == null || isBlank(storeCode)) {
+        if (isBlank(storeCode)) {
             return Optional.empty();
         }
 
-        if (isAdmin(supervisorId)) {
+        if (supervisorId == null || isAdmin(supervisorId) || getAssignedStoreCodes(supervisorId).isEmpty()) {
             return Optional.of(storeMapService.getStoreDetails(storeCode.trim(), null, null));
         }
 
@@ -169,565 +557,316 @@ public class MobileService {
         return Optional.of(storeMapService.getStoreDetails(storeCode.trim(), null, null));
     }
 
-    public List<MobileMerchandiserExecutionResponse> getMerchandiserExecution(
+    public Optional<MobileStoreDetailResponse> getMobileStoreDetails(
             Long supervisorId,
+            String storeCode,
             Integer year,
             Integer month,
             Integer day
     ) {
-        if (supervisorId == null) {
-            return List.of();
+        if (isBlank(storeCode)) {
+            return Optional.empty();
         }
 
-        DateFilter dateFilter = buildDateFilter(year, month, day);
-
-        if (isAdmin(supervisorId)) {
-            return getMerchandiserExecutionForAll(dateFilter);
+        if (supervisorId != null && supervisorId > 0 && !isAdmin(supervisorId)
+                && !getAssignedStoreCodes(supervisorId).isEmpty()
+                && !isStoreAssignedToSupervisor(supervisorId, storeCode)) {
+            return Optional.empty();
         }
 
-        return getMerchandiserExecutionForSupervisor(supervisorId, dateFilter);
-    }
-
-    public List<MobileMerchandiserStoreResponse> getMerchandiserStores(
-            Long supervisorId,
-            String employeeCode,
-            Integer year,
-            Integer month,
-            Integer day
-    ) {
-        if (supervisorId == null || isBlank(employeeCode)) {
-            return List.of();
-        }
-
-        DateFilter dateFilter = buildDateFilter(year, month, day);
-
-        if (isAdmin(supervisorId)) {
-            return getMerchandiserStoresForAll(employeeCode.trim(), dateFilter);
-        }
-
-        return getMerchandiserStoresForSupervisor(supervisorId, employeeCode.trim(), dateFilter);
-    }
-
-    public List<MobileExecutionStoreSummaryResponse> getExecutionStores(
-            Long supervisorId,
-            String type,
-            Integer year,
-            Integer month,
-            Integer day
-    ) {
-        if (supervisorId == null || isBlank(type)) {
-            return List.of();
-        }
-
-        String normalizedType = type.trim().toLowerCase();
-        String callcycleValue;
-
-        if ("covered".equals(normalizedType)) {
-            callcycleValue = "non";
-        } else if ("deviation".equals(normalizedType) || "deviations".equals(normalizedType)) {
-            callcycleValue = "oui";
-        } else {
-            return List.of();
-        }
-
-        DateFilter periodFilter = buildPeriodToDateFilter(year, month, day);
-
-        if (isAdmin(supervisorId)) {
-            return getExecutionStoresForAll(callcycleValue, periodFilter);
-        }
-
-        return getExecutionStoresForSupervisor(supervisorId, callcycleValue, periodFilter);
-    }
-
-    private MobileDashboardOverviewResponse emptyOverview() {
-        return new MobileDashboardOverviewResponse(
-                new MobileDashboardOverviewResponse.TableCounts(0L, 0L, 0L, 0L, 0L),
-                new MobileDashboardOverviewResponse.StoreActivity(0L, 0L, 0L, 0L, null),
-                new MobileDashboardOverviewResponse.DailyReport(0L, 0L)
+        CoverageFilter filter = buildCoverageFilter(
+                supervisorId, null, null, null, null, null, null, year, month, day
         );
-    }
 
-    private MobileDashboardOverviewResponse getAdminOverview(DateFilter dateFilter) {
-        Long stores = countAllStores();
-        Long employees = countForAll("""
-                SELECT COUNT(DISTINCT v.employee_id) AS total_count
-                FROM visits v
-                """, dateFilter);
-        Long visits = countForAll("""
-                SELECT COUNT(*) AS total_count
-                FROM visits v
-                """, dateFilter);
-        Long surveyResponses = countForAll("""
-                SELECT COUNT(*) AS total_count
-                FROM survey_responses sr
-                JOIN visits v ON v.visit_id = sr.visit_id
-                """, dateFilter);
-        Long products = countForAll("""
-                SELECT COUNT(DISTINCT sr.product_code) AS total_count
-                FROM survey_responses sr
-                JOIN visits v ON v.visit_id = sr.visit_id
-                """, dateFilter);
-        Long visitedStores = countForAll("""
-                SELECT COUNT(DISTINCT v.store_id) AS total_count
-                FROM visits v
-                """, dateFilter);
-        Long notVisitedStores = Math.max(0L, stores - visitedStores);
-        java.time.LocalDate latestVisitDate = getLatestVisitDateForAll(dateFilter);
-        Long storesRevisited = countStoresRevisitedForAll(dateFilter);
+        List<Object> params = new ArrayList<>();
+        params.add(storeCode.trim());
+        params.addAll(filter.params());
 
-        return new MobileDashboardOverviewResponse(
-                new MobileDashboardOverviewResponse.TableCounts(
-                        employees,
-                        stores,
-                        products,
-                        visits,
-                        surveyResponses
-                ),
-                new MobileDashboardOverviewResponse.StoreActivity(
-                        stores,
-                        visitedStores,
-                        notVisitedStores,
-                        visits,
-                        latestVisitDate
-                ),
-                new MobileDashboardOverviewResponse.DailyReport(
-                        employees,
-                        storesRevisited
-                )
-        );
-    }
-
-    private List<MobileMerchandiserExecutionResponse> getMerchandiserExecutionForSupervisor(
-            Long supervisorId,
-            DateFilter dateFilter
-    ) {
-        List<Object> params = new java.util.ArrayList<>();
-        params.add(supervisorId);
-        params.addAll(dateFilter.params());
-
-        return jdbcTemplate.query(
+        List<MobileStoreDetailResponse> rows = jdbcTemplate.query(
                 """
                 SELECT
-                    e.employee_code,
-                    e.username,
-                    COUNT(DISTINCT v.visit_id) AS planned_visits,
-                    COUNT(DISTINCT CASE
-                        WHEN LOWER(TRIM(c.q_callcycle_deviation)) = 'oui' THEN v.visit_id
-                    END) AS deviation_visits,
-                    COUNT(DISTINCT CASE
-                        WHEN LOWER(TRIM(c.q_callcycle_deviation)) = 'non' THEN v.store_id
-                    END) AS stores_covered,
-                    GROUP_CONCAT(DISTINCT s.store_city ORDER BY s.store_city SEPARATOR ', ') AS cities,
-                    MAX(v.visit_date) AS latest_visit_date
-                FROM visits v
-                JOIN employees e ON e.employee_id = v.employee_id
-                JOIN stores s ON s.store_id = v.store_id
-                JOIN task_callcycle_deviation c ON c.visit_id = v.visit_id
-                JOIN supervisor_stores ss ON ss.store_id = v.store_id
-                JOIN supervisors sup ON sup.supervisor_id = ss.supervisor_id
-                WHERE ss.supervisor_id = ?
-                  AND sup.active = TRUE
-                  AND LOWER(TRIM(c.q_callcycle_deviation)) IN ('non', 'oui')
-                """ + dateFilter.andClause() + """
+                    fc.store_code,
+                    fc.store_name,
+                    fc.store_city,
+                    fc.store_region,
+                    fc.store_format,
+                    fc.employee_code,
+                    fc.username,
+                    COALESCE(fc.l1name, fc.l2name, fc.l3name) AS supervisor_name,
+                    fc.visit_date,
+                    fc.call_status,
+                    fc.call_cycle_type,
+                    fc.is_planned,
+                    fc.is_done,
+                    """ + NON_VISITED_CONDITION + """
+                     AS not_visited,
+                    fc.deviation,
+                    fc.rejection,
+                    fc.task_assigned,
+                    fc.task_done,
+                    fc.task_per,
+                    fc.reason,
+                    fc.user_attendance,
+                    fc.superior_attendance,
+                    fc.final_user_attendance,
+                    fc.master_latitude,
+                    fc.master_longitude,
+                    fc.start_distance_meters,
+                    fc.end_distance_meters,
+                    fc.start_time,
+                    fc.end_time,
+                    (
+                        SELECT MAX(latest.visit_date)
+                        FROM fact_coverage latest
+                        WHERE latest.store_code = fc.store_code
+                    ) AS latest_visit_date
+                FROM fact_coverage fc
+                WHERE fc.store_code = ?
+                """ + filter.andClause() + """
 
-                GROUP BY e.employee_id, e.employee_code, e.username
-                ORDER BY planned_visits DESC, stores_covered DESC, e.username
-                LIMIT 50
+                ORDER BY fc.visit_date DESC, fc.start_time DESC
+                LIMIT 1
                 """,
-                (rs, rowNum) -> mapMerchandiserExecution(rs),
+                (rs, rowNum) -> new MobileStoreDetailResponse(
+                        rs.getString("store_code"),
+                        rs.getString("store_name"),
+                        rs.getString("store_city"),
+                        rs.getString("store_region"),
+                        rs.getString("store_format"),
+                        rs.getString("employee_code"),
+                        rs.getString("username"),
+                        rs.getString("supervisor_name"),
+                        toLocalDate(rs, "visit_date"),
+                        toLocalDate(rs, "latest_visit_date"),
+                        rs.getString("call_status"),
+                        rs.getString("call_cycle_type"),
+                        rs.getBoolean("is_planned"),
+                        rs.getBoolean("is_done"),
+                        rs.getBoolean("not_visited"),
+                        rs.getBoolean("deviation"),
+                        rs.getBoolean("rejection"),
+                        getNullableInteger(rs, "task_assigned"),
+                        getNullableInteger(rs, "task_done"),
+                        getNullableDouble(rs, "task_per"),
+                        rs.getString("reason"),
+                        rs.getString("user_attendance"),
+                        rs.getString("superior_attendance"),
+                        rs.getString("final_user_attendance"),
+                        rs.getBigDecimal("master_latitude"),
+                        rs.getBigDecimal("master_longitude"),
+                        rs.getBigDecimal("start_distance_meters"),
+                        rs.getBigDecimal("end_distance_meters"),
+                        toLocalDateTime(rs, "start_time"),
+                        toLocalDateTime(rs, "end_time")
+                ),
                 params.toArray()
         );
+
+        return rows.stream().findFirst();
     }
 
-    private List<MobileMerchandiserExecutionResponse> getMerchandiserExecutionForAll(DateFilter dateFilter) {
-        return jdbcTemplate.query(
-                """
-                SELECT
-                    e.employee_code,
-                    e.username,
-                    COUNT(DISTINCT v.visit_id) AS planned_visits,
-                    COUNT(DISTINCT CASE
-                        WHEN LOWER(TRIM(c.q_callcycle_deviation)) = 'oui' THEN v.visit_id
-                    END) AS deviation_visits,
-                    COUNT(DISTINCT CASE
-                        WHEN LOWER(TRIM(c.q_callcycle_deviation)) = 'non' THEN v.store_id
-                    END) AS stores_covered,
-                    GROUP_CONCAT(DISTINCT s.store_city ORDER BY s.store_city SEPARATOR ', ') AS cities,
-                    MAX(v.visit_date) AS latest_visit_date
-                FROM visits v
-                JOIN employees e ON e.employee_id = v.employee_id
-                JOIN stores s ON s.store_id = v.store_id
-                JOIN task_callcycle_deviation c ON c.visit_id = v.visit_id
-                WHERE 1 = 1
-                  AND LOWER(TRIM(c.q_callcycle_deviation)) IN ('non', 'oui')
-                """ + dateFilter.andClause() + """
-
-                GROUP BY e.employee_id, e.employee_code, e.username
-                ORDER BY planned_visits DESC, stores_covered DESC, e.username
-                LIMIT 50
-                """,
-                (rs, rowNum) -> mapMerchandiserExecution(rs),
-                dateFilter.params().toArray()
-        );
-    }
-
-    private MobileMerchandiserExecutionResponse mapMerchandiserExecution(java.sql.ResultSet rs)
-            throws java.sql.SQLException {
+    private MobileMerchandiserExecutionResponse mapMerchandiserExecution(ResultSet rs) throws SQLException {
         long plannedVisits = rs.getLong("planned_visits");
+        long executedVisits = rs.getLong("executed_visits");
+        long nonVisitedVisits = rs.getLong("non_visited_visits");
         long deviationVisits = rs.getLong("deviation_visits");
-        long storesCovered = rs.getLong("stores_covered");
-        java.sql.Date latestVisitDate = rs.getDate("latest_visit_date");
+        long rejectedVisits = rs.getLong("rejected_visits");
+        long taskDone = rs.getLong("task_done");
+        long taskAssigned = rs.getLong("task_assigned");
 
         return new MobileMerchandiserExecutionResponse(
                 rs.getString("employee_code"),
                 rs.getString("username"),
+                rs.getString("supervisor_name"),
+                rs.getString("region"),
+                rs.getString("city"),
                 plannedVisits,
+                rs.getLong("adhoc_visits"),
+                executedVisits,
+                rate(executedVisits, plannedVisits),
+                nonVisitedVisits,
                 deviationVisits,
-                storesCovered,
+                rejectedVisits,
+                rs.getLong("problematic_visits"),
+                rate(taskDone, taskAssigned),
+                getNullableDouble(rs, "avg_visit_duration"),
+                getNullableDouble(rs, "avg_distance_from_store"),
+                rs.getLong("stores_covered"),
                 splitCommaSeparatedValues(rs.getString("cities")),
-                latestVisitDate == null ? null : latestVisitDate.toLocalDate()
+                splitCommaSeparatedValues(rs.getString("store_formats")),
+                toLocalDate(rs, "latest_visit_date")
         );
     }
 
-    private List<MobileMerchandiserStoreResponse> getMerchandiserStoresForSupervisor(
-            Long supervisorId,
-            String employeeCode,
-            DateFilter dateFilter
-    ) {
-        List<Object> params = new java.util.ArrayList<>();
-        params.add(employeeCode);
-        params.add(supervisorId);
-        params.addAll(dateFilter.params());
+    private MobileStoreCoverageResponse mapCoverageStore(ResultSet rs) throws SQLException {
+        BigDecimal latitude = rs.getBigDecimal("master_latitude");
+        BigDecimal longitude = rs.getBigDecimal("master_longitude");
 
-        return jdbcTemplate.query(
-                """
-                SELECT
-                    s.store_code,
-                    s.store_name,
-                    s.store_city,
-                    s.store_format,
-                    v.visit_date,
-                    c.q_callcycle_deviation,
-                    c.q_reason
-                FROM visits v
-                JOIN employees e ON e.employee_id = v.employee_id
-                JOIN stores s ON s.store_id = v.store_id
-                JOIN task_callcycle_deviation c ON c.visit_id = v.visit_id
-                JOIN supervisor_stores ss ON ss.store_id = v.store_id
-                JOIN supervisors sup ON sup.supervisor_id = ss.supervisor_id
-                WHERE e.employee_code = ?
-                  AND ss.supervisor_id = ?
-                  AND sup.active = TRUE
-                  AND LOWER(TRIM(c.q_callcycle_deviation)) IN ('non', 'oui')
-                """ + dateFilter.andClause() + """
-
-                ORDER BY v.visit_date DESC, s.store_name, s.store_code
-                """,
-                (rs, rowNum) -> mapMerchandiserStore(rs),
-                params.toArray()
-        );
-    }
-
-    private List<MobileMerchandiserStoreResponse> getMerchandiserStoresForAll(
-            String employeeCode,
-            DateFilter dateFilter
-    ) {
-        List<Object> params = new java.util.ArrayList<>();
-        params.add(employeeCode);
-        params.addAll(dateFilter.params());
-
-        return jdbcTemplate.query(
-                """
-                SELECT
-                    s.store_code,
-                    s.store_name,
-                    s.store_city,
-                    s.store_format,
-                    v.visit_date,
-                    c.q_callcycle_deviation,
-                    c.q_reason
-                FROM visits v
-                JOIN employees e ON e.employee_id = v.employee_id
-                JOIN stores s ON s.store_id = v.store_id
-                JOIN task_callcycle_deviation c ON c.visit_id = v.visit_id
-                WHERE e.employee_code = ?
-                  AND LOWER(TRIM(c.q_callcycle_deviation)) IN ('non', 'oui')
-                """ + dateFilter.andClause() + """
-
-                ORDER BY v.visit_date DESC, s.store_name, s.store_code
-                """,
-                (rs, rowNum) -> mapMerchandiserStore(rs),
-                params.toArray()
-        );
-    }
-
-    private MobileMerchandiserStoreResponse mapMerchandiserStore(java.sql.ResultSet rs)
-            throws java.sql.SQLException {
-        String callcycleDeviation = rs.getString("q_callcycle_deviation");
-        boolean isDeviation = callcycleDeviation != null
-                && callcycleDeviation.trim().equalsIgnoreCase("oui");
-        java.sql.Date visitDate = rs.getDate("visit_date");
-
-        return new MobileMerchandiserStoreResponse(
+        return new MobileStoreCoverageResponse(
                 rs.getString("store_code"),
                 rs.getString("store_name"),
                 rs.getString("store_city"),
-                rs.getString("store_format"),
-                visitDate == null ? null : visitDate.toLocalDate(),
-                isDeviation ? "Deviation" : "Covered",
-                isDeviation ? rs.getString("q_reason") : null
-        );
-    }
-
-    private List<MobileExecutionStoreSummaryResponse> getExecutionStoresForSupervisor(
-            Long supervisorId,
-            String callcycleValue,
-            DateFilter periodFilter
-    ) {
-        List<Object> params = new java.util.ArrayList<>();
-        params.add(supervisorId);
-        params.add(callcycleValue);
-        params.addAll(periodFilter.params());
-
-        return jdbcTemplate.query(
-                """
-                SELECT
-                    s.store_code,
-                    s.store_name,
-                    s.store_city,
-                    s.store_format,
-                    COUNT(DISTINCT v.visit_id) AS execution_count,
-                    COUNT(DISTINCT e.employee_code) AS merchandiser_count,
-                    MAX(v.visit_date) AS latest_visit_date
-                FROM visits v
-                JOIN employees e ON e.employee_id = v.employee_id
-                JOIN stores s ON s.store_id = v.store_id
-                JOIN task_callcycle_deviation c ON c.visit_id = v.visit_id
-                JOIN supervisor_stores ss ON ss.store_id = v.store_id
-                JOIN supervisors sup ON sup.supervisor_id = ss.supervisor_id
-                WHERE ss.supervisor_id = ?
-                  AND sup.active = TRUE
-                  AND LOWER(TRIM(c.q_callcycle_deviation)) = ?
-                """ + periodFilter.andClause() + """
-
-                GROUP BY s.store_id, s.store_code, s.store_name, s.store_city, s.store_format
-                ORDER BY execution_count DESC, latest_visit_date DESC, s.store_name, s.store_code
-                LIMIT 100
-                """,
-                (rs, rowNum) -> mapExecutionStoreSummary(rs),
-                params.toArray()
-        );
-    }
-
-    private List<MobileExecutionStoreSummaryResponse> getExecutionStoresForAll(
-            String callcycleValue,
-            DateFilter periodFilter
-    ) {
-        List<Object> params = new java.util.ArrayList<>();
-        params.add(callcycleValue);
-        params.addAll(periodFilter.params());
-
-        return jdbcTemplate.query(
-                """
-                SELECT
-                    s.store_code,
-                    s.store_name,
-                    s.store_city,
-                    s.store_format,
-                    COUNT(DISTINCT v.visit_id) AS execution_count,
-                    COUNT(DISTINCT e.employee_code) AS merchandiser_count,
-                    MAX(v.visit_date) AS latest_visit_date
-                FROM visits v
-                JOIN employees e ON e.employee_id = v.employee_id
-                JOIN stores s ON s.store_id = v.store_id
-                JOIN task_callcycle_deviation c ON c.visit_id = v.visit_id
-                WHERE LOWER(TRIM(c.q_callcycle_deviation)) = ?
-                """ + periodFilter.andClause() + """
-
-                GROUP BY s.store_id, s.store_code, s.store_name, s.store_city, s.store_format
-                ORDER BY execution_count DESC, latest_visit_date DESC, s.store_name, s.store_code
-                LIMIT 100
-                """,
-                (rs, rowNum) -> mapExecutionStoreSummary(rs),
-                params.toArray()
-        );
-    }
-
-    private MobileExecutionStoreSummaryResponse mapExecutionStoreSummary(java.sql.ResultSet rs)
-            throws java.sql.SQLException {
-        java.sql.Date latestVisitDate = rs.getDate("latest_visit_date");
-
-        return new MobileExecutionStoreSummaryResponse(
-                rs.getString("store_code"),
-                rs.getString("store_name"),
                 rs.getString("store_city"),
+                rs.getString("store_region"),
+                rs.getString("store_region"),
                 rs.getString("store_format"),
-                rs.getLong("execution_count"),
-                rs.getLong("merchandiser_count"),
-                latestVisitDate == null ? null : latestVisitDate.toLocalDate()
+                rs.getString("employee_code"),
+                rs.getString("username"),
+                rs.getString("supervisor_name"),
+                toLocalDate(rs, "visit_date"),
+                rs.getString("call_status"),
+                rs.getString("call_cycle_type"),
+                rs.getBoolean("is_planned"),
+                rs.getBoolean("is_done"),
+                rs.getBoolean("not_visited"),
+                rs.getBoolean("deviation"),
+                rs.getBoolean("rejection"),
+                getNullableInteger(rs, "task_assigned"),
+                getNullableInteger(rs, "task_done"),
+                getNullableDouble(rs, "task_per"),
+                rs.getString("reason"),
+                latitude,
+                longitude,
+                latitude == null ? null : latitude.doubleValue(),
+                longitude == null ? null : longitude.doubleValue(),
+                rs.getBigDecimal("start_distance_meters"),
+                rs.getBigDecimal("end_distance_meters")
         );
     }
 
-    private Long countAssignedStores(Long supervisorId) {
-        Long count = jdbcTemplate.query(
-                """
-                SELECT COUNT(DISTINCT ss.store_id) AS total_count
-                FROM supervisor_stores ss
-                JOIN supervisors sup ON sup.supervisor_id = ss.supervisor_id
-                WHERE ss.supervisor_id = ?
-                  AND sup.active = TRUE
-                """,
-                rs -> rs.next() ? rs.getLong("total_count") : 0L,
-                supervisorId
-        );
-
-        return count == null ? 0L : count;
-    }
-
-    private Long countAllStores() {
-        Long count = jdbcTemplate.query(
-                """
-                SELECT COUNT(DISTINCT store_code) AS total_count
-                FROM stores
-                WHERE store_code IS NOT NULL
-                  AND TRIM(store_code) <> ''
-                """,
-                rs -> rs.next() ? rs.getLong("total_count") : 0L
-        );
-
-        return count == null ? 0L : count;
-    }
-
-    private Long countForSupervisor(String baseSql, Long supervisorId, DateFilter dateFilter) {
-        List<Object> params = new java.util.ArrayList<>();
-        params.add(supervisorId);
-        params.addAll(dateFilter.params());
-
-        Long count = jdbcTemplate.query(
-                baseSql + """
-                JOIN supervisor_stores ss ON ss.store_id = v.store_id
-                JOIN supervisors sup ON sup.supervisor_id = ss.supervisor_id
-                WHERE ss.supervisor_id = ?
-                  AND sup.active = TRUE
-                """ + dateFilter.andClause() + "\n",
-                rs -> rs.next() ? rs.getLong("total_count") : 0L,
-                params.toArray()
-        );
-
-        return count == null ? 0L : count;
-    }
-
-    private Long countForAll(String baseSql, DateFilter dateFilter) {
-        Long count = jdbcTemplate.query(
-                baseSql + """
-                WHERE 1 = 1
-                """ + dateFilter.andClause() + "\n",
-                rs -> rs.next() ? rs.getLong("total_count") : 0L,
-                dateFilter.params().toArray()
-        );
-
-        return count == null ? 0L : count;
-    }
-
-    private java.time.LocalDate getLatestVisitDate(Long supervisorId, DateFilter dateFilter) {
-        List<Object> params = new java.util.ArrayList<>();
-        params.add(supervisorId);
-        params.addAll(dateFilter.params());
-
-        return jdbcTemplate.query(
-                """
-                SELECT MAX(v.visit_date) AS latest_visit_date
-                FROM visits v
-                JOIN supervisor_stores ss ON ss.store_id = v.store_id
-                JOIN supervisors sup ON sup.supervisor_id = ss.supervisor_id
-                WHERE ss.supervisor_id = ?
-                  AND sup.active = TRUE
-                """ + dateFilter.andClause() + "\n",
-                rs -> {
-                    if (!rs.next()) {
-                        return null;
-                    }
-
-                    java.sql.Date latestVisitDate = rs.getDate("latest_visit_date");
-                    return latestVisitDate == null ? null : latestVisitDate.toLocalDate();
-                },
-                params.toArray()
+    private MobileDashboardOverviewResponse emptyOverview() {
+        return new MobileDashboardOverviewResponse(
+                0L,
+                0L,
+                0L,
+                0L,
+                0L,
+                0L,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                null,
+                0L,
+                new MobileDashboardOverviewResponse.TableCounts(0L, 0L, 0L, 0L, 0L),
+                new MobileDashboardOverviewResponse.StoreActivity(0L, 0L, 0L, 0L, null, 0L, 0L, 0L),
+                new MobileDashboardOverviewResponse.DailyReport(0L, 0L)
         );
     }
 
-    private java.time.LocalDate getLatestVisitDateForAll(DateFilter dateFilter) {
-        return jdbcTemplate.query(
-                """
-                SELECT MAX(v.visit_date) AS latest_visit_date
-                FROM visits v
-                WHERE 1 = 1
-                """ + dateFilter.andClause() + "\n",
-                rs -> {
-                    if (!rs.next()) {
-                        return null;
-                    }
+    private CoverageFilter buildCoverageFilter(
+            Long supervisorId,
+            String startDate,
+            String endDate,
+            String supervisor,
+            String merchandiser,
+            String region,
+            String storeFormat,
+            Integer year,
+            Integer month,
+            Integer day
+    ) {
+        List<String> conditions = new ArrayList<>();
+        List<Object> params = new ArrayList<>();
 
-                    java.sql.Date latestVisitDate = rs.getDate("latest_visit_date");
-                    return latestVisitDate == null ? null : latestVisitDate.toLocalDate();
-                },
-                dateFilter.params().toArray()
-        );
+        LocalDate parsedStartDate = parseDate(startDate);
+        LocalDate parsedEndDate = parseDate(endDate);
+
+        if (parsedStartDate != null) {
+            conditions.add("fc.visit_date >= ?");
+            params.add(parsedStartDate);
+        }
+        if (parsedEndDate != null) {
+            conditions.add("fc.visit_date <= ?");
+            params.add(parsedEndDate);
+        }
+
+        if (parsedStartDate == null && parsedEndDate == null) {
+            if (year != null) {
+                conditions.add("YEAR(fc.visit_date) = ?");
+                params.add(year);
+            }
+            if (month != null) {
+                conditions.add("MONTH(fc.visit_date) = ?");
+                params.add(month);
+            }
+            if (day != null) {
+                conditions.add("DAYOFMONTH(fc.visit_date) = ?");
+                params.add(day);
+            }
+        }
+
+        if (!isBlank(supervisor)) {
+            conditions.add("""
+                    (
+                        LOWER(COALESCE(fc.l1name, '')) LIKE ?
+                        OR LOWER(COALESCE(fc.l2name, '')) LIKE ?
+                        OR LOWER(COALESCE(fc.l3name, '')) LIKE ?
+                    )
+                    """);
+            String value = likeValue(supervisor);
+            params.add(value);
+            params.add(value);
+            params.add(value);
+        }
+
+        if (!isBlank(merchandiser)) {
+            conditions.add("(LOWER(fc.employee_code) = ? OR LOWER(COALESCE(fc.username, '')) LIKE ?)");
+            params.add(merchandiser.trim().toLowerCase());
+            params.add(likeValue(merchandiser));
+        }
+
+        if (!isBlank(region)) {
+            conditions.add("LOWER(COALESCE(fc.store_region, '')) LIKE ?");
+            params.add(likeValue(region));
+        }
+
+        if (!isBlank(storeFormat)) {
+            conditions.add("LOWER(COALESCE(fc.store_format, '')) LIKE ?");
+            params.add(likeValue(storeFormat));
+        }
+
+        if (supervisorId != null && supervisorId > 0 && !isAdmin(supervisorId)) {
+            List<String> assignedStoreCodes = getAssignedStoreCodes(supervisorId);
+            if (!assignedStoreCodes.isEmpty()) {
+                String placeholders = String.join(",", assignedStoreCodes.stream().map(item -> "?").toList());
+                conditions.add("fc.store_code IN (" + placeholders + ")");
+                params.addAll(assignedStoreCodes);
+            }
+        }
+
+        if (conditions.isEmpty()) {
+            return new CoverageFilter("", List.of());
+        }
+
+        return new CoverageFilter(" AND " + String.join(" AND ", conditions), params);
     }
 
-    private Long countStoresRevisited(Long supervisorId, DateFilter dateFilter) {
-        List<Object> params = new java.util.ArrayList<>();
-        params.add(supervisorId);
-        params.addAll(dateFilter.params());
+    private static String buildStoreFormatGroupClause(String storeFormatGroup) {
+        if (isBlank(storeFormatGroup) || "ALL".equalsIgnoreCase(storeFormatGroup.trim())) {
+            return "";
+        }
 
-        Long count = jdbcTemplate.query(
-                """
-                SELECT COUNT(*) AS total_count
-                FROM (
-                    SELECT s.store_code
-                    FROM visits v
-                    JOIN stores s ON s.store_id = v.store_id
-                    JOIN employees e ON e.employee_id = v.employee_id
-                    JOIN supervisor_stores ss ON ss.store_id = v.store_id
-                    JOIN supervisors sup ON sup.supervisor_id = ss.supervisor_id
-                    WHERE ss.supervisor_id = ?
-                      AND sup.active = TRUE
-                    """ + dateFilter.andClause() + """
+        // GT means Grocery. MT means every other known non-blank store format.
+        if ("GT".equalsIgnoreCase(storeFormatGroup.trim())) {
+            return " AND UPPER(TRIM(COALESCE(fc.store_format, ''))) = 'GROCERY'";
+        }
+        if ("MT".equalsIgnoreCase(storeFormatGroup.trim())) {
+            return """
+                     AND TRIM(COALESCE(fc.store_format, '')) <> ''
+                     AND UPPER(TRIM(COALESCE(fc.store_format, ''))) <> 'GROCERY'
+                    """;
+        }
 
-                    GROUP BY s.store_code
-                    HAVING COUNT(DISTINCT e.employee_code) > 1
-                ) revisited_stores
-                """,
-                rs -> rs.next() ? rs.getLong("total_count") : 0L,
-                params.toArray()
-        );
-
-        return count == null ? 0L : count;
-    }
-
-    private Long countStoresRevisitedForAll(DateFilter dateFilter) {
-        Long count = jdbcTemplate.query(
-                """
-                SELECT COUNT(*) AS total_count
-                FROM (
-                    SELECT s.store_code
-                    FROM visits v
-                    JOIN stores s ON s.store_id = v.store_id
-                    JOIN employees e ON e.employee_id = v.employee_id
-                    WHERE 1 = 1
-                    """ + dateFilter.andClause() + """
-
-                    GROUP BY s.store_code
-                    HAVING COUNT(DISTINCT e.employee_code) > 1
-                ) revisited_stores
-                """,
-                rs -> rs.next() ? rs.getLong("total_count") : 0L,
-                dateFilter.params().toArray()
-        );
-
-        return count == null ? 0L : count;
+        return "";
     }
 
     private List<String> getAssignedStoreCodes(Long supervisorId) {
+        if (supervisorId == null || supervisorId <= 0) {
+            return List.of();
+        }
+
         return jdbcTemplate.query(
                 """
                 SELECT s.store_code
@@ -762,20 +901,9 @@ public class MobileService {
         return count != null && count > 0;
     }
 
-    private static List<String> splitCommaSeparatedValues(String value) {
-        if (value == null || value.isBlank()) {
-            return List.of();
-        }
-
-        return java.util.Arrays.stream(value.split(","))
-                .map(String::trim)
-                .filter(item -> !item.isEmpty())
-                .toList();
-    }
-
     private boolean isAdmin(Long supervisorId) {
-        if (supervisorId == null) {
-            return false;
+        if (supervisorId == null || supervisorId <= 0) {
+            return true;
         }
 
         Integer count = jdbcTemplate.query(
@@ -793,60 +921,73 @@ public class MobileService {
         return count != null && count > 0;
     }
 
-    private static DateFilter buildDateFilter(Integer year, Integer month, Integer day) {
-        List<String> conditions = new java.util.ArrayList<>();
-        List<Object> params = new java.util.ArrayList<>();
-
-        if (year != null) {
-            conditions.add("YEAR(v.visit_date) = ?");
-            params.add(year);
-        }
-
-        if (month != null) {
-            conditions.add("MONTH(v.visit_date) = ?");
-            params.add(month);
-        }
-
-        if (day != null) {
-            conditions.add("DAYOFMONTH(v.visit_date) = ?");
-            params.add(day);
-        }
-
-        if (conditions.isEmpty()) {
-            return new DateFilter("", List.of());
-        }
-
-        return new DateFilter(" AND " + String.join(" AND ", conditions), params);
+    private static List<Object> prependAndAppendDistance(List<Object> params) {
+        List<Object> out = new ArrayList<>();
+        out.add(GPS_DISTANCE_THRESHOLD_METERS);
+        out.addAll(params);
+        out.add(GPS_DISTANCE_THRESHOLD_METERS);
+        return out;
     }
 
-    private static DateFilter buildPeriodToDateFilter(Integer year, Integer month, Integer day) {
-        if (year == null || month == null) {
-            return buildDateFilter(year, month, null);
+    private static LocalDate parseDate(String value) {
+        if (isBlank(value)) {
+            return null;
         }
 
-        if (day == null) {
-            return buildDateFilter(year, month, null);
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static String likeValue(String value) {
+        return "%" + value.trim().toLowerCase() + "%";
+    }
+
+    private static Double rate(long numerator, long denominator) {
+        if (denominator <= 0) {
+            return 0.0;
         }
 
-        int safeDay = Math.max(1, day);
-        java.time.LocalDate periodStart = java.time.LocalDate.of(year, month, 1);
-        java.time.LocalDate periodEnd = java.time.LocalDate.of(
-                year,
-                month,
-                Math.min(safeDay, periodStart.lengthOfMonth())
-        );
+        return (numerator * 100.0) / denominator;
+    }
 
-        return new DateFilter(
-                " AND v.visit_date BETWEEN ? AND ?",
-                List.of(periodStart, periodEnd)
-        );
+    private static LocalDate toLocalDate(ResultSet rs, String column) throws SQLException {
+        java.sql.Date value = rs.getDate(column);
+        return value == null ? null : value.toLocalDate();
+    }
+
+    private static LocalDateTime toLocalDateTime(ResultSet rs, String column) throws SQLException {
+        java.sql.Timestamp value = rs.getTimestamp(column);
+        return value == null ? null : value.toLocalDateTime();
+    }
+
+    private static Integer getNullableInteger(ResultSet rs, String column) throws SQLException {
+        int value = rs.getInt(column);
+        return rs.wasNull() ? null : value;
+    }
+
+    private static Double getNullableDouble(ResultSet rs, String column) throws SQLException {
+        double value = rs.getDouble(column);
+        return rs.wasNull() ? null : value;
+    }
+
+    private static List<String> splitCommaSeparatedValues(String value) {
+        if (isBlank(value)) {
+            return List.of();
+        }
+
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(item -> !item.isEmpty())
+                .toList();
     }
 
     private static boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
 
-    private record DateFilter(String andClause, List<Object> params) {
+    private record CoverageFilter(String andClause, List<Object> params) {
     }
-
 }

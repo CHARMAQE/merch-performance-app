@@ -34,6 +34,7 @@ export function StoreMapScreen({
   error,
   onSelectStore,
   selectedStore,
+  onOpenStoreDetail,
 }) {
   const mapRef = useRef(null);
   const ignoreNextMapPressRef = useRef(false);
@@ -44,6 +45,8 @@ export function StoreMapScreen({
   const [isStoreDetailsLoading, setIsStoreDetailsLoading] = useState(false);
   const [storeDetailsError, setStoreDetailsError] = useState("");
   const [isStoreSheetExpanded, setIsStoreSheetExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState("map");
+  const [statusFilter, setStatusFilter] = useState("all");
   const sheetAnimation = useRef(new Animated.Value(0)).current;
   const sheetStartProgressRef = useRef(0);
   const selectedStoreName = selectedStore?.storeName || "";
@@ -119,17 +122,48 @@ export function StoreMapScreen({
     animateStoreSheet(isStoreSheetExpanded);
   }, [isStoreSheetExpanded, sheetAnimation]);
 
-  const validStores = useMemo(
-    () =>
-      stores.filter(
+  const validStores = useMemo(() => {
+    const byStoreCode = new Map();
+    stores
+      .filter(
         (store) =>
           store.latitude !== null &&
           store.longitude !== null &&
           !Number.isNaN(Number(store.latitude)) &&
-          !Number.isNaN(Number(store.longitude))
-      ),
-    [stores]
-  );
+          !Number.isNaN(Number(store.longitude)) &&
+          Number(store.latitude) !== 0 &&
+          Number(store.longitude) !== 0
+      )
+      .forEach((store) => {
+        if (!byStoreCode.has(store.storeCode)) {
+          byStoreCode.set(store.storeCode, store);
+        }
+      });
+
+    return Array.from(byStoreCode.values());
+  }, [stores]);
+
+  const filteredStores = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return stores
+      .filter((store) => {
+        if (statusFilter === "all") {
+          return true;
+        }
+
+        return getStoreStatusKey(store) === statusFilter;
+      })
+      .filter((store) => {
+        if (!normalizedSearch) {
+          return true;
+        }
+
+        return [store.storeCode, store.storeName, store.city, store.storeCity, store.storeFormat, store.username]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+      });
+  }, [searchTerm, statusFilter, stores]);
 
   const matchingStores = useMemo(() => {
     if (!searchTerm.trim() || selectedStore) {
@@ -209,7 +243,7 @@ export function StoreMapScreen({
       } catch (detailLoadError) {
         if (isMounted) {
           setStoreDetails(null);
-          setStoreDetailsError("Restart backend to load details.");
+          setStoreDetailsError("Unable to load data. Please check backend connection.");
         }
       } finally {
         if (isMounted) {
@@ -311,7 +345,7 @@ export function StoreMapScreen({
 
   const merchandiserLabel = storeDetails?.merchandiserName
     ? `${storeDetails.merchandiserName}${storeDetails?.merchandiserUserId ? ` (${storeDetails.merchandiserUserId})` : ""}`
-    : "N/A";
+    : "Not available";
 
   return (
     <View style={styles.mapScreen}>
@@ -362,8 +396,103 @@ export function StoreMapScreen({
             ))}
           </View>
         ) : null}
+
+        <View style={styles.storeModeRow}>
+          <Pressable
+            style={[styles.storeModeButton, viewMode === "map" ? styles.storeModeButtonActive : null]}
+            onPress={() => setViewMode("map")}
+          >
+            <Text style={[styles.storeModeText, viewMode === "map" ? styles.storeModeTextActive : null]}>
+              Map
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.storeModeButton, viewMode === "list" ? styles.storeModeButtonActive : null]}
+            onPress={() => setViewMode("list")}
+          >
+            <Text style={[styles.storeModeText, viewMode === "list" ? styles.storeModeTextActive : null]}>
+              List
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
+      {viewMode === "list" ? (
+        <ScrollView contentContainerStyle={styles.storeListContent}>
+          <View style={styles.statusFilterRow}>
+            {["all", "covered", "nonVisited", "deviation", "rejected"].map((status) => (
+              <Pressable
+                key={status}
+                style={[
+                  styles.statusFilterChip,
+                  statusFilter === status ? styles.statusFilterChipActive : null,
+                ]}
+                onPress={() => setStatusFilter(status)}
+              >
+                <Text
+                  style={[
+                    styles.statusFilterText,
+                    statusFilter === status ? styles.statusFilterTextActive : null,
+                  ]}
+                >
+                  {statusLabel(status)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {isLoading ? (
+            <View style={styles.inlineState}>
+              <ActivityIndicator color={colors.navy} />
+              <Text style={styles.bodyText}>Loading stores...</Text>
+            </View>
+          ) : null}
+
+          {filteredStores.length > 0 ? (
+            <View style={styles.storeCardList}>
+              {filteredStores.map((store, index) => (
+                <Pressable
+                  key={`${store.storeCode}-${store.visitDate}-${index}`}
+                  style={styles.storeCard}
+                  onPress={() => onOpenStoreDetail?.(store)}
+                >
+                  <View style={styles.storeRow}>
+                    <View style={styles.merchTitleBlock}>
+                      <Text style={styles.merchName} numberOfLines={1}>
+                        {store.storeName || "Unknown store"}
+                      </Text>
+                      <Text style={styles.merchCode}>
+                        {[store.storeCode, store.storeFormat].filter(Boolean).join(" - ")}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBadge, storeStatusStyle(store)]}>
+                      <Text style={styles.statusBadgeText}>{storeStatusLabel(store)}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.merchCities} numberOfLines={2}>
+                    {[store.city || store.storeCity, store.region || store.storeRegion, formatDate(store.visitDate)]
+                      .filter(Boolean)
+                      .join(" - ")}
+                  </Text>
+                  <Text style={styles.merchMetric}>
+                    {[store.username, store.supervisorName].filter(Boolean).join(" - ") || "No merchandiser"}
+                  </Text>
+                  <View style={styles.merchMetricRow}>
+                    <Text style={styles.merchMetric}>Tasks {formatPercentage(store.taskPer)}</Text>
+                    {store.reason ? (
+                      <Text style={styles.merchReasons} numberOfLines={1}>
+                        {store.reason}
+                      </Text>
+                    ) : null}
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          ) : !isLoading ? (
+            <Text style={styles.emptyStateText}>No stores found for this filter.</Text>
+          ) : null}
+        </ScrollView>
+      ) : (
       <MapView
         ref={mapRef}
         style={styles.map}
@@ -411,7 +540,9 @@ export function StoreMapScreen({
           ))
         )}
       </MapView>
+      )}
 
+      {viewMode === "map" ? (
       <View
         style={[
           styles.locationControls,
@@ -436,8 +567,9 @@ export function StoreMapScreen({
           </View>
         ) : null}
       </View>
+      ) : null}
 
-      {selectedStore ? (
+      {viewMode === "map" && selectedStore ? (
         <Animated.View
           style={[
             styles.storeSheet,
@@ -527,7 +659,7 @@ export function StoreMapScreen({
 
               <View style={styles.storeMetricGrid}>
                 <Text style={styles.storeDetailsSectionTitle}>Visit information</Text>
-                <StoreMetric label="City" value={selectedStore.storeCity || "N/A"} />
+                <StoreMetric label="City" value={selectedStore.storeCity || "Not available"} />
                 <StoreMetric
                   label="Monthly visits"
                   value={formatNumber(storeDetails?.monthlyVisitCount)}
@@ -542,7 +674,23 @@ export function StoreMapScreen({
                 />
                 <StoreMetric
                   label="Deviation"
-                  value={formatPercentage(storeDetails?.deviationPercentage)}
+                  value={
+                    selectedStore.deviation
+                      ? "Yes"
+                      : formatPercentage(storeDetails?.deviationPercentage)
+                  }
+                />
+                <StoreMetric
+                  label="Status"
+                  value={selectedStore.callStatus || storeDetails?.coverageStatus || "Not available"}
+                />
+                <StoreMetric
+                  label="Task completion"
+                  value={formatPercentage(selectedStore.taskPer)}
+                />
+                <StoreMetric
+                  label="Reason"
+                  value={selectedStore.reason || "Not available"}
                 />
               </View>
             </ScrollView>
@@ -551,4 +699,31 @@ export function StoreMapScreen({
       ) : null}
     </View>
   );
+}
+
+function getStoreStatusKey(store) {
+  if (store?.rejection) return "rejected";
+  if (store?.deviation) return "deviation";
+  if (store?.notVisited) return "nonVisited";
+  return "covered";
+}
+
+function storeStatusLabel(store) {
+  return statusLabel(getStoreStatusKey(store));
+}
+
+function statusLabel(status) {
+  if (status === "nonVisited") return "Non Visited";
+  if (status === "deviation") return "Deviation";
+  if (status === "rejected") return "Rejected";
+  if (status === "covered") return "Covered";
+  return "All";
+}
+
+function storeStatusStyle(store) {
+  const status = getStoreStatusKey(store);
+  if (status === "nonVisited") return styles.statusBadgeNonVisited;
+  if (status === "deviation") return styles.statusBadgeDeviation;
+  if (status === "rejected") return styles.statusBadgeRejected;
+  return styles.statusBadgeCovered;
 }

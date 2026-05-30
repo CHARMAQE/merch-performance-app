@@ -15,6 +15,8 @@ from config.db_config import DB_CONFIG
 TABLES_TO_CLEAR = [
     "validation_results",
     "validation_run_log",
+    "etl_run_log",
+    "fact_coverage",
     "survey_responses",
     "task_callcycle_deviation",
     "task_location_checkin",
@@ -27,6 +29,7 @@ TABLES_TO_CLEAR = [
     "task_store_conditions",
     "visits",
     "products",
+    "supervisor_stores",
     "stores",
     "employees",
 ]

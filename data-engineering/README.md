@@ -6,7 +6,7 @@ It is responsible for extracting Excel data, transforming it, loading MySQL tabl
 
 ## Current Flow
 
-Main command from the repository root:
+Main command from the repository root opens the desktop launcher:
 
 ```bash
 python data-engineering/main.py
@@ -31,13 +31,23 @@ Portal command example:
 python data-engineering/main.py --portal
 ```
 
-When `--portal` is used, the downloaded Excel data is automatically filtered to yesterday's visit date. For example, if the command is run on `2026-05-04`, only `2026-05-03` rows are loaded.
+Coverage portal command example:
+
+```bash
+python data-engineering/main.py --coverage-portal
+```
+
+Command-line flags are still available for direct advanced runs.
+
+When `--portal` is used, the downloaded Data Dump file is loaded without an automatic date filter. Use `--start-date` and `--end-date` only when you intentionally want to restrict the load.
 
 The run does this:
 
 1. Ask for the source type:
-   - local Excel file
-   - automatic portal download
+   - local Data Dump Excel file
+   - automatic Data Dump portal download
+   - local Coverage Excel file
+   - local Coverage Excel file
 2. Optionally filter rows by visit date.
 3. Read the Excel file into a pandas dataframe.
 4. Build base table dataframes:
@@ -114,6 +124,9 @@ PORTAL_URL=https://smartmanagement.smollan.com/#/login
 PORTAL_USER=your_portal_user
 PORTAL_PASS=your_portal_password
 PORTAL_ENTITY=Morocco Unilever
+DATA_DUMP_REPORT_NAME=Data Dump
+COVERAGE_REPORT_NAME=Coverage Data
+COVERAGE_LOOKBACK_DAYS=3
 UNILEVER_DOWNLOAD_DIR=./data-engineering/downloads
 PORTAL_HEADLESS=false
 ```
@@ -124,9 +137,9 @@ Do not commit `.env`.
 
 ### `main.py`
 
-The current manual entrypoint.
+The project entrypoint.
 
-It coordinates:
+When run without arguments, it opens the desktop launcher. When run with command-line arguments, it coordinates:
 
 - source selection
 - optional visit date filtering
@@ -137,7 +150,20 @@ It coordinates:
 
 ### `extract/portal_exporter.py`
 
-Uses Playwright to log into the Smollan portal and export the Excel report.
+Uses Playwright to log into the Smollan portal and export Excel reports.
+
+Supported report helpers:
+
+- `download_excel_from_portal()` for Data Dump
+- `download_coverage_from_portal()` for Coverage
+
+If the portal report labels are different, update these values in `.env`:
+
+```env
+DATA_DUMP_REPORT_NAME=Data Dump
+COVERAGE_REPORT_NAME=Coverage Data
+COVERAGE_LOOKBACK_DAYS=3
+```
 
 If you use this path, install Playwright:
 
@@ -255,6 +281,19 @@ For portal download:
 1. choose option `2`
 2. make sure portal credentials exist in `.env`
 3. make sure Playwright is installed
+
+For the desktop popup:
+
+```bash
+python data-engineering/main.py
+```
+
+The desktop app separates:
+
+- Daily Pipeline: Data Dump and Coverage, selected together or separately
+- Monthly Masters: Store, User, Assortment, and Call Cycle file selection
+
+The monthly master tab currently stages file selection only. The actual dimension loaders should be implemented with the future `dim_store_master`, `dim_user_master`, `dim_assortment_master`, and `dim_call_cycle_master` tables.
 
 ## Known Issues
 

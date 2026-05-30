@@ -1,14 +1,14 @@
 # Merch Performance App
 
-Merch Performance App is a full-stack project for processing Unilever/Smollan retail execution data.
+Merch Performance App is a full-stack PFE project for Smollan / Unilever retail execution follow-up.
 
-The project takes exported field execution data from Excel, loads it into MySQL, runs validation logic, exposes reporting endpoints through a Spring Boot API, and displays a first validation dashboard in a React frontend.
+The main company-facing deliverable is a mobile app for Unilever supervisors. It helps them follow stores, merchandisers, field visits, execution status, and anomalies directly from the field. Behind the mobile app, the project uses an Excel-to-MySQL ETL pipeline, validation rules, a Spring Boot API, a React validation dashboard, and future Power BI reporting.
 
 ## Project Status
 
-This project is currently a strong academic prototype with a working end-to-end data pipeline, validation layer, backend API, and first dashboard version.
+This project is currently a strong academic prototype with a working end-to-end data pipeline, validation layer, backend API, mobile app, and first dashboard version.
 
-The strongest part of the project is the data engineering and validation flow. The backend and frontend now expose a usable first dashboard, but the project still needs more reporting depth, more validation rules, and stronger automated testing before it would be considered production-ready.
+The strongest part of the project is the data engineering and validation flow. The next priority is to make the mobile supervisor experience clearer, more professional, and better connected to the real Unilever field workflow.
 
 ## Main Architecture
 
@@ -18,7 +18,9 @@ Excel export
   -> MySQL database
   -> validation rules
   -> Spring Boot backend API
-  -> React frontend dashboard
+  -> Expo mobile supervisor app
+  -> React validation dashboard
+  -> Power BI reporting
 ```
 
 ## Repository Structure
@@ -152,6 +154,33 @@ Current behavior:
 
 The frontend is now a first dashboard version focused on stores, validation, and anomaly context.
 
+### Mobile App
+
+Location:
+
+```text
+mobile/
+```
+
+Stack:
+
+- Expo
+- React Native
+
+Main role:
+
+- provide Unilever supervisors with a field-ready view of assigned stores and merchandisers
+- replace or improve the manual daily report
+- show daily execution indicators, store coverage, merchandiser activity, maps, and anomaly context
+
+Current mobile screens:
+
+- login
+- dashboard overview
+- merchandiser execution
+- store map
+- store details
+
 ## Local Setup
 
 ### 1. Create the MySQL Database
@@ -269,7 +298,8 @@ http://localhost:3000
 10. The validation engine runs active validation rules.
 11. Validation issues are inserted into `validation_results`.
 12. Backend endpoints expose selected data.
-13. Frontend reads backend data.
+13. The mobile app reads supervisor execution data.
+14. The web dashboard reads validation and anomaly data.
 
 ## Current Validation Rules
 
@@ -322,13 +352,15 @@ These are important before continuing development:
 
 Recommended next steps:
 
-1. Add more business validation rules.
-2. Expand dashboard KPIs and drill-down filters.
-3. Add tests for ETL transformations and validation rules.
-4. Add richer backend API tests instead of only context load.
-5. Review Python dependencies and explicitly document portal-export requirements.
-6. Decide whether dynamic task tables should remain dynamic or move toward controlled migrations.
-7. Add Docker Compose only when you are ready to run MySQL, backend, and frontend together through Docker.
+1. Redesign the mobile supervisor dashboard around the field workflow.
+2. Improve merchandiser and store execution screens.
+3. Add more business validation rules.
+4. Expand web dashboard KPIs and drill-down filters.
+5. Add tests for ETL transformations and validation rules.
+6. Add richer backend API tests instead of only context load.
+7. Review Python dependencies and explicitly document portal-export requirements.
+8. Decide whether dynamic task tables should remain dynamic or move toward controlled migrations.
+9. Add Docker Compose only when you are ready to run MySQL, backend, frontend, and mobile backend services together.
 
 ## Development Notes
 

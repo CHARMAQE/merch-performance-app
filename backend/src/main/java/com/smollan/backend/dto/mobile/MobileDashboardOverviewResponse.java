@@ -3,6 +3,19 @@ package com.smollan.backend.dto.mobile;
 import java.time.LocalDate;
 
 public record MobileDashboardOverviewResponse(
+        Long plannedVisits,
+        Long executedVisits,
+        Long nonVisitedVisits,
+        Long deviationVisits,
+        Long rejectedVisits,
+        Long problematicVisits,
+        Double coverageRate,
+        Double nonVisitedRate,
+        Double deviationRate,
+        Double rejectionRate,
+        Double taskCompletionRate,
+        LocalDate latestVisitDate,
+        Long activeMerchandisers,
         TableCounts tableCounts,
         StoreActivity storeActivity,
         DailyReport dailyReport
@@ -21,7 +34,10 @@ public record MobileDashboardOverviewResponse(
             Long visitedStores,
             Long notVisitedStores,
             Long visits,
-            LocalDate latestVisitDate
+            LocalDate latestVisitDate,
+            Long plannedStores,
+            Long coveredStores,
+            Long deviationStores
     ) {
     }
 

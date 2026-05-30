@@ -12,13 +12,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.smollan.backend.dto.map.StoreMapDetailResponse;
-import com.smollan.backend.dto.map.StoreMapMarkerResponse;
 import com.smollan.backend.dto.mobile.MobileDashboardOverviewResponse;
 import com.smollan.backend.dto.mobile.MobileExecutionStoreSummaryResponse;
+import com.smollan.backend.dto.mobile.MobileIssueResponse;
 import com.smollan.backend.dto.mobile.MobileLoginRequest;
 import com.smollan.backend.dto.mobile.MobileMerchandiserExecutionResponse;
 import com.smollan.backend.dto.mobile.MobileMerchandiserStoreResponse;
+import com.smollan.backend.dto.mobile.MobileStoreCoverageResponse;
+import com.smollan.backend.dto.mobile.MobileStoreDetailResponse;
 import com.smollan.backend.dto.mobile.MobileSupervisorResponse;
 import com.smollan.backend.service.MobileService;
 
@@ -43,41 +44,96 @@ public class MobileController {
     }
 
     @GetMapping("/stores")
-    public List<StoreMapMarkerResponse> getSupervisorStores(
-            @RequestParam Long supervisorId
+    public List<MobileStoreCoverageResponse> getSupervisorStores(
+            @RequestParam(required = false) Long supervisorId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String supervisor,
+            @RequestParam(required = false) String merchandiser,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) String storeFormat,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer day
     ) {
-        return mobileService.getSupervisorStores(supervisorId);
+        return mobileService.getCoverageStores(
+                supervisorId, startDate, endDate, supervisor, merchandiser,
+                region, storeFormat, year, month, day
+        );
     }
 
     @GetMapping("/overview")
     public MobileDashboardOverviewResponse getSupervisorOverview(
-            @RequestParam Long supervisorId,
+            @RequestParam(required = false) Long supervisorId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String supervisor,
+            @RequestParam(required = false) String merchandiser,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) String storeFormat,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
             @RequestParam(required = false) Integer day
     ) {
-        return mobileService.getSupervisorOverview(supervisorId, year, month, day);
+        return mobileService.getSupervisorOverview(
+                supervisorId, startDate, endDate, supervisor, merchandiser,
+                region, storeFormat, year, month, day
+        );
     }
 
     @GetMapping("/merchandisers")
     public List<MobileMerchandiserExecutionResponse> getMerchandiserExecution(
-            @RequestParam Long supervisorId,
+            @RequestParam(required = false) Long supervisorId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String supervisor,
+            @RequestParam(required = false) String merchandiser,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) String storeFormat,
+            @RequestParam(required = false) String storeFormatGroup,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
             @RequestParam(required = false) Integer day
     ) {
-        return mobileService.getMerchandiserExecution(supervisorId, year, month, day);
+        return mobileService.getMerchandiserExecution(
+                supervisorId, startDate, endDate, supervisor, merchandiser,
+                region, storeFormat, storeFormatGroup, year, month, day
+        );
+    }
+
+    @GetMapping("/issues")
+    public List<MobileIssueResponse> getIssues(
+            @RequestParam(required = false) Long supervisorId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String supervisor,
+            @RequestParam(required = false) String merchandiser,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) String storeFormat,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer day
+    ) {
+        return mobileService.getIssues(
+                supervisorId, startDate, endDate, supervisor, merchandiser,
+                region, storeFormat, year, month, day
+        );
     }
 
     @GetMapping("/merchandisers/{employeeCode}/stores")
     public List<MobileMerchandiserStoreResponse> getMerchandiserStores(
             @PathVariable String employeeCode,
             @RequestParam Long supervisorId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String storeFormatGroup,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
             @RequestParam(required = false) Integer day
     ) {
-        return mobileService.getMerchandiserStores(supervisorId, employeeCode, year, month, day);
+        return mobileService.getMerchandiserStores(
+                supervisorId, employeeCode, startDate, endDate, storeFormatGroup, year, month, day
+        );
     }
 
     @GetMapping("/execution-stores")
@@ -92,11 +148,14 @@ public class MobileController {
     }
 
     @GetMapping("/stores/{storeCode}")
-    public ResponseEntity<StoreMapDetailResponse> getSupervisorStoreDetails(
+    public ResponseEntity<MobileStoreDetailResponse> getSupervisorStoreDetails(
             @PathVariable String storeCode,
-            @RequestParam Long supervisorId
+            @RequestParam(required = false) Long supervisorId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer day
     ) {
-        return mobileService.getSupervisorStoreDetails(supervisorId, storeCode)
+        return mobileService.getMobileStoreDetails(supervisorId, storeCode, year, month, day)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
