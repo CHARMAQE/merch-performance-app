@@ -36,6 +36,24 @@ merch-performance-app/
 └── README.md
 ```
 
+## Cross-Platform Setup
+
+Use the setup guide when moving between Windows 11 and MacBook Air M1:
+
+```text
+SETUP.md
+```
+
+Standard local development versions:
+
+- Python 3.12
+- Node.js 20.x
+- Java 17
+- MySQL 8.4 through Docker Compose
+- backend Maven wrapper from `backend/mvnw` or `backend/mvnw.cmd`
+
+Power BI editing remains Windows-only.
+
 ## Main Components
 
 ### Data Engineering

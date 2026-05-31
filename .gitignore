@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 venv/
 .RealWork/
+.Realwork/
 
 # Java
 backend/target/
@@ -11,6 +12,7 @@ backend/target/
 # Node
 frontend/node_modules/
 mobile/node_modules/
+node_modules/
 
 # IDE
 .vscode/
@@ -23,6 +25,7 @@ Thumbs.db
 
 # Logs / debug
 *.log
+logs/
 
 # LaTeX build artifacts
 *.aux
@@ -46,7 +49,20 @@ data-engineering/debug_timeout_export.html
 data-engineering/debug_timeout_export.png
 
 # Local secrets
+.env
+*.env.local
 data-engineering/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+mobile/.env
+mobile/.env.local
+mobile/.env.*.local
 
 # Optional local downloads
 data-engineering/downloads/
+data-engineering/inbound/
+data-engineering/backups/
+data-engineering/local-data/
+local-data/
+backups/

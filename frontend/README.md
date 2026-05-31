@@ -76,10 +76,16 @@ Builds the frontend for production.
 
 ## Backend Dependency
 
-The frontend currently expects this backend endpoint:
+The frontend defaults to this backend URL:
 
 ```text
-GET http://localhost:9000/api/map/stores
+http://localhost:9000
+```
+
+Override it locally with:
+
+```env
+REACT_APP_API_BASE=http://localhost:9000
 ```
 
 If the backend is not running, the page will load but the map data will not appear.
@@ -90,8 +96,7 @@ Recommended next frontend work:
 
 1. Add validation issue drill-down filters.
 2. Add OSA risk prediction views.
-3. Move the backend API base URL into an environment variable.
-4. Add frontend tests for map and dashboard loading states.
+3. Add frontend tests for map and dashboard loading states.
 
 ## Current Scope
 

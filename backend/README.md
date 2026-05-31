@@ -6,7 +6,7 @@ The backend connects to the MySQL database loaded by the Python ETL and exposes 
 
 ## Stack
 
-- Java
+- Java 17
 - Spring Boot
 - Spring JDBC
 - MySQL Connector/J

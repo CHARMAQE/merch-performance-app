@@ -9,6 +9,10 @@
     "ios": "expo start --ios --lan",
     "web": "expo start --web"
   },
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  },
   "dependencies": {
     "expo": "~54.0.33",
     "expo-location": "~19.0.8",

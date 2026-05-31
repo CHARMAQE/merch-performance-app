@@ -297,8 +297,8 @@ The monthly master tab currently stages file selection only. The actual dimensio
 
 ## Known Issues
 
-- `requirements.txt` is currently UTF-16 encoded; convert it to UTF-8 later.
-- `playwright` is required for portal download but is not currently listed in `requirements.txt`.
+- Use Python 3.12 for the most predictable local setup on Windows and macOS.
+- `playwright` is listed in the root `requirements.txt`, but Chromium still needs a separate `python -m playwright install chromium` step.
 - The ETL creates and alters task tables dynamically, so schema can change based on incoming questions.
 - Current validation execution is code-driven, not database-rule-driven.
 - There is no dedicated test suite yet for transformations or validation rules.

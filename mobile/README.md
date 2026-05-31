@@ -41,13 +41,13 @@ Install Expo Go on your phone, then scan the QR code.
 
 The phone must call your laptop IP address, not `localhost`.
 
-Current URL in `src/api/backendApi.js`:
+Set this value in your shell or in a local `.env` file:
 
-```text
-http://192.168.100.198:9000
+```env
+EXPO_PUBLIC_API_BASE_URL=http://YOUR_COMPUTER_LAN_IP:9000
 ```
 
-If your Wi-Fi IP changes, update `LAN_API_BASE` in `src/api/backendApi.js`.
+If your Wi-Fi IP changes, update `EXPO_PUBLIC_API_BASE_URL`.
 
 The app uses this same LAN URL for Expo Go on a physical phone.
 
