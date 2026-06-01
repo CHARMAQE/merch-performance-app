@@ -144,6 +144,13 @@ def run_data_dump_pipeline(
         affected_visit_ids = etl_result.get("affected_visit_ids", [])
         logger("\nCore ETL finished.")
         logger(f"Affected visits in uploaded file: {len(affected_visit_ids)}")
+        cleanup_result = etl_result.get("idempotency_cleanup", {})
+        if cleanup_result:
+            logger(
+                "Idempotency cleanup summary: "
+                f"{cleanup_result.get('survey_responses_deleted', 0)} old survey_responses rows deleted, "
+                f"{cleanup_result.get('task_rows_deleted', 0)} old task rows deleted."
+            )
 
         logger("\nFetching visits lookup for survey_responses...")
         visit_lookup_df = fetch_visit_lookup_dataframe()
@@ -169,7 +176,7 @@ def run_data_dump_pipeline(
             return {**etl_result, "survey_responses": 0}
 
         logger("\nLoading survey_responses...")
-        inserted_rows = load_survey_responses(df)
+        inserted_rows = load_survey_responses(df, cleanup_existing=False, logger=logger)
         logger(f"Inserted rows into survey_responses: {inserted_rows}")
 
         if should_run_validation:

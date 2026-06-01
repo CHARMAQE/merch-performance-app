@@ -4,8 +4,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from extract.portal_exporter import download_daily_reports_from_portal
-from pipelines import run_coverage_pipeline, run_data_dump_pipeline
+from orchestration.prefect_orchestrator import run_full_pipeline_with_monitoring
 
 
 class PipelineLauncher(tk.Tk):
@@ -201,28 +200,16 @@ class PipelineLauncher(tk.Tk):
 
     def _run_daily_worker(self, load_data_dump, load_coverage, source, data_dump_file, coverage_file):
         try:
-            if source == "portal":
-                self._log("Downloading selected portal files in one browser session...")
-                downloads = download_daily_reports_from_portal(
-                    include_data_dump=load_data_dump,
-                    include_coverage=load_coverage,
-                )
-                data_dump_file = downloads.get("data_dump") or data_dump_file
-                coverage_file = downloads.get("coverage") or coverage_file
-                self._log(f"Portal downloads completed: {downloads}")
-
-            if load_data_dump:
-                run_data_dump_pipeline(
-                    data_dump_file,
-                    downloaded_from_portal=(source == "portal"),
-                    should_run_validation=self.validation_var.get(),
-                    source_mode=source,
-                    logger=self._log,
-                )
-
-            if load_coverage:
-                run_coverage_pipeline(coverage_file, source_mode=source, logger=self._log)
-
+            result = run_full_pipeline_with_monitoring(
+                include_data_dump=load_data_dump,
+                include_coverage=load_coverage,
+                source_mode=source,
+                data_dump_file=data_dump_file or None,
+                coverage_file=coverage_file or None,
+                run_validation=self.validation_var.get(),
+                logger=self._log,
+            )
+            self._log(f"Monitored run completed: {result}")
             self._log("===== DAILY PIPELINE COMPLETED SUCCESSFULLY =====")
         except Exception as exc:
             error_message = str(exc)

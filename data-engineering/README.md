@@ -41,13 +41,46 @@ Command-line flags are still available for direct advanced runs.
 
 When `--portal` is used, the downloaded Data Dump file is loaded without an automatic date filter. Use `--start-date` and `--end-date` only when you intentionally want to restrict the load.
 
+## Prefect Monitoring
+
+Prefect is integrated behind the existing workflow. The normal command remains:
+
+```bash
+python data-engineering/main.py
+```
+
+The desktop launcher is still the main user interface. When a user starts a Daily Pipeline job, the launcher calls the monitored orchestration layer internally. Manual Excel upload and portal automation both remain available.
+
+Prefect adds observability around the existing ETL code:
+
+- step started, succeeded, or failed
+- database connection check before loading
+- portal download retry for fragile browser/export steps
+- Data Dump and Coverage file paths used
+- validation status when Data Dump validation is enabled
+- final run summary in terminal and launcher logs
+
+The Prefect UI/server is optional. If no Prefect server is running, the flow still runs locally and logs normally. To inspect runs in the local UI, start the server separately and open `http://localhost:4200`:
+
+```bash
+prefect server start
+```
+
+`data-engineering/prefect_flow.py` remains only as a developer/debug command for testing the orchestration layer directly. It is not the normal user workflow:
+
+```bash
+python data-engineering/prefect_flow.py --data-dump-file "C:\path\to\data-dump.xlsx"
+```
+
+Scheduling and deployments can be added later. This project intentionally does not create a scheduled deployment or a `daily_run.py` file.
+
 The run does this:
 
 1. Ask for the source type:
    - local Data Dump Excel file
    - automatic Data Dump portal download
    - local Coverage Excel file
-   - local Coverage Excel file
+   - automatic Coverage portal download
 2. Optionally filter rows by visit date.
 3. Read the Excel file into a pandas dataframe.
 4. Build base table dataframes:
@@ -92,6 +125,11 @@ data-engineering/
 ├── main.py
 └── README.md
 ```
+
+Additional orchestration files:
+
+- `orchestration/prefect_orchestrator.py`
+- `prefect_flow.py` for developer/debug runs only
 
 ## Configuration
 
@@ -141,7 +179,9 @@ Do not commit `.env`. Older local `DB_*`, `PORTAL_USER`, `PORTAL_PASS`, and `UNI
 
 The project entrypoint.
 
-When run without arguments, it opens the desktop launcher. When run with command-line arguments, it coordinates:
+When run without arguments, it opens the desktop launcher. Daily jobs started from the launcher are executed through Prefect monitoring internally.
+
+When run with command-line arguments, it uses the same monitored orchestration layer for:
 
 - source selection
 - optional visit date filtering
@@ -149,6 +189,19 @@ When run without arguments, it opens the desktop launcher. When run with command
 - core ETL
 - survey response build/load
 - validation run
+
+### `orchestration/prefect_orchestrator.py`
+
+Reusable Prefect orchestration layer used by `main.py` and the desktop launcher.
+
+It exposes monitored functions for:
+
+- Data Dump ETL
+- Coverage ETL
+- portal download
+- full Daily Pipeline runs
+
+It wraps existing pipeline functions and portal helpers; it does not duplicate ETL business logic.
 
 ### `extract/portal_exporter.py`
 
@@ -273,22 +326,22 @@ From the repository root:
 python data-engineering/main.py
 ```
 
-For a local Excel file:
+For a local Excel upload:
 
-1. choose option `1`
-2. paste the Excel file path
+1. Open the Daily Run tab.
+2. Select Data Dump, Coverage, or both.
+3. Select "Load Excel files from computer".
+4. Choose the Excel file paths.
+5. Click "Run Daily Pipeline".
 
 For portal download:
 
-1. choose option `2`
-2. make sure portal credentials exist in `.env`
-3. make sure Playwright is installed
-
-For the desktop popup:
-
-```bash
-python data-engineering/main.py
-```
+1. Open the Daily Run tab.
+2. Select Data Dump, Coverage, or both.
+3. Select "Extract selected files from portal".
+4. Make sure portal credentials exist in `.env`.
+5. Make sure Playwright is installed.
+6. Click "Run Daily Pipeline".
 
 The desktop app separates:
 

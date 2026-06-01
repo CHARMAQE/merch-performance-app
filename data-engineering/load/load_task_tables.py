@@ -155,7 +155,20 @@ def ensure_sos_table(cursor, table_name):
         )
 
 
-def load_sos_table(db, cursor, batch, affected_visit_ids, logger=print):
+def _delete_existing_task_rows(cursor, table_name, affected_visit_ids):
+    if not affected_visit_ids:
+        return 0
+
+    visit_ids = sorted({int(v) for v in affected_visit_ids if v is not None and not pd.isna(v)})
+    if not visit_ids:
+        return 0
+
+    ph = ",".join(["%s"] * len(visit_ids))
+    cursor.execute(f"DELETE FROM {table_name} WHERE visit_id IN ({ph})", visit_ids)
+    return max(cursor.rowcount, 0)
+
+
+def load_sos_table(db, cursor, batch, affected_visit_ids, logger=print, cleanup_existing=True):
     table_name = batch["table_name"]
     table_df = batch["table_df"]
 
@@ -163,9 +176,9 @@ def load_sos_table(db, cursor, batch, affected_visit_ids, logger=print):
 
     ensure_sos_table(cursor, table_name)
 
-    if affected_visit_ids:
-        ph = ",".join(["%s"] * len(affected_visit_ids))
-        cursor.execute(f"DELETE FROM {table_name} WHERE visit_id IN ({ph})", affected_visit_ids)
+    if cleanup_existing:
+        deleted = _delete_existing_task_rows(cursor, table_name, affected_visit_ids)
+        logger(f"    -> {deleted} old rows deleted before insert")
 
     count = 0
 
@@ -224,7 +237,7 @@ def load_sos_table(db, cursor, batch, affected_visit_ids, logger=print):
     logger(f"    -> {count} rows inserted")
 
 
-def load_standard_task_table(db, cursor, batch, affected_visit_ids, logger=print):
+def load_standard_task_table(db, cursor, batch, affected_visit_ids, logger=print, cleanup_existing=True):
     table_name = batch["table_name"]
     table_df = batch["table_df"]
     has_product = batch["has_product"]
@@ -246,9 +259,9 @@ def load_standard_task_table(db, cursor, batch, affected_visit_ids, logger=print
     )
     ensure_question_columns(cursor, table_name, question_col_map)
 
-    if affected_visit_ids:
-        ph = ",".join(["%s"] * len(affected_visit_ids))
-        cursor.execute(f"DELETE FROM {table_name} WHERE visit_id IN ({ph})", affected_visit_ids)
+    if cleanup_existing:
+        deleted = _delete_existing_task_rows(cursor, table_name, affected_visit_ids)
+        logger(f"    -> {deleted} old rows deleted before insert")
 
     group_cols = ["_visit_id"]
     if has_product:
@@ -323,9 +336,23 @@ def load_standard_task_table(db, cursor, batch, affected_visit_ids, logger=print
     logger(f"    -> {count} pivoted rows inserted")
 
 
-def load_task_tables(db, cursor, task_batches, affected_visit_ids, logger=print):
+def load_task_tables(db, cursor, task_batches, affected_visit_ids, logger=print, cleanup_existing=True):
     for batch in task_batches:
         if batch["table_name"] == "task_sos":
-            load_sos_table(db, cursor, batch, affected_visit_ids, logger=logger)
+            load_sos_table(
+                db,
+                cursor,
+                batch,
+                affected_visit_ids,
+                logger=logger,
+                cleanup_existing=cleanup_existing,
+            )
         else:
-            load_standard_task_table(db, cursor, batch, affected_visit_ids, logger=logger)
+            load_standard_task_table(
+                db,
+                cursor,
+                batch,
+                affected_visit_ids,
+                logger=logger,
+                cleanup_existing=cleanup_existing,
+            )

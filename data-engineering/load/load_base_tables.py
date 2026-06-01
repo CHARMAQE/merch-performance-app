@@ -1,6 +1,5 @@
 import pandas as pd
 
-from load.load_task_tables import get_all_task_tables, table_exists
 from transform.etl_helpers import to_sql_value
 
 
@@ -20,21 +19,6 @@ def _executemany_chunks(cursor, sql, rows, chunk_size=3000):
         cursor.executemany(sql, chunk)
         total += len(chunk)
     return total
-
-
-def delete_visit_payload_batch(cursor, visit_ids):
-    if not visit_ids:
-        return
-
-    visit_ids = [int(v) for v in visit_ids]
-    ph = ",".join(["%s"] * len(visit_ids))
-
-    for table_name in get_all_task_tables():
-        if table_exists(cursor, table_name):
-            cursor.execute(f"DELETE FROM {table_name} WHERE visit_id IN ({ph})", visit_ids)
-
-    if table_exists(cursor, "survey_responses"):
-        cursor.execute(f"DELETE FROM survey_responses WHERE visit_id IN ({ph})", visit_ids)
 
 
 def load_employees(db, cursor, employees_df, logger=print):
@@ -170,9 +154,6 @@ def load_visits(db, cursor, visits_df, emp_map, store_map, logger=print):
             visit_id = int(result[0])
             visit_map[(visit_date_str, employee_code, store_code)] = visit_id
             affected_visit_ids.append(visit_id)
-
-    delete_visit_payload_batch(cursor, affected_visit_ids)
-    db.commit()
 
     logger(f"  {len(visit_map)} visits affected")
     return visit_map

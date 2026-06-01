@@ -67,16 +67,22 @@ def _iter_insert_rows(df: pd.DataFrame):
 def _delete_existing_visit_rows(cursor, visit_ids):
     visit_ids = sorted({int(v) for v in visit_ids if v is not None and not pd.isna(v)})
     if not visit_ids:
-        return
+        return 0
 
     placeholders = ",".join(["%s"] * len(visit_ids))
     cursor.execute(
         f"DELETE FROM survey_responses WHERE visit_id IN ({placeholders})",
         visit_ids,
     )
+    return max(cursor.rowcount, 0)
 
 
-def load_survey_responses(df: pd.DataFrame, batch_size: int = 5000) -> int:
+def load_survey_responses(
+    df: pd.DataFrame,
+    batch_size: int = 5000,
+    cleanup_existing: bool = True,
+    logger=print,
+) -> int:
     """
     Faster than the old version because:
     - uses itertuples instead of iterrows
@@ -93,8 +99,9 @@ def load_survey_responses(df: pd.DataFrame, batch_size: int = 5000) -> int:
     batch = []
 
     try:
-        _delete_existing_visit_rows(cursor, df["visit_id"].dropna().tolist())
-        conn.commit()
+        if cleanup_existing:
+            deleted = _delete_existing_visit_rows(cursor, df["visit_id"].dropna().tolist())
+            logger(f"Deleted old survey_responses rows before insert: {deleted}")
 
         for row in _iter_insert_rows(df):
             batch.append(row)

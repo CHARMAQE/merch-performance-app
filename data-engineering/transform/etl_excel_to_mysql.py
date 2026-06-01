@@ -7,6 +7,7 @@ from load.load_base_tables import (
     load_stores,
     load_visits,
 )
+from load.idempotency import cleanup_existing_data_for_visits
 from load.load_task_tables import load_task_tables
 from transform.build_base_tables import (
     build_employees_dataframe,
@@ -39,16 +40,32 @@ def run_etl(source_df, logger=print):
         store_map = load_stores(db, cursor, stores_df, logger=logger)
         prod_map = load_products(db, cursor, products_df, logger=logger)
         visit_map = load_visits(db, cursor, visits_df, emp_map, store_map, logger=logger)
+        affected_visit_ids = sorted({int(v) for v in visit_map.values() if v is not None})
+        logger(f"\nAffected visit_ids in uploaded file: {len(affected_visit_ids)}")
+
+        logger("\n--- Idempotency cleanup for Data Dump payload ---")
+        cleanup_result = cleanup_existing_data_for_visits(
+            db,
+            cursor,
+            affected_visit_ids,
+            logger=logger,
+        )
 
         logger("\n--- Building task tables ---")
         tagged_df = build_tagged_task_dataframe(df, visit_map, prod_map)
         logger(f"  {len(tagged_df)} rows matched to task tables")
 
         task_batches = build_task_table_batches(tagged_df)
-        affected_visit_ids = sorted({int(v) for v in visit_map.values() if v is not None})
 
         logger("\n--- Loading task tables ---")
-        load_task_tables(db, cursor, task_batches, affected_visit_ids, logger=logger)
+        load_task_tables(
+            db,
+            cursor,
+            task_batches,
+            affected_visit_ids,
+            logger=logger,
+            cleanup_existing=False,
+        )
 
         logger("\nDone!")
         return {
@@ -58,6 +75,7 @@ def run_etl(source_df, logger=print):
             "products": len(prod_map),
             "visits": len(visit_map),
             "affected_visit_ids": affected_visit_ids,
+            "idempotency_cleanup": cleanup_result,
         }
 
     except Exception:

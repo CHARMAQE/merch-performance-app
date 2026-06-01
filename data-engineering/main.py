@@ -3,12 +3,12 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from extract.portal_exporter import (
-    download_coverage_from_portal,
-    download_excel_from_portal,
-)
 from launcher import launch_desktop_app
-from pipelines import run_coverage_pipeline, run_data_dump_pipeline
+from orchestration.prefect_orchestrator import (
+    run_coverage_with_monitoring,
+    run_data_dump_with_monitoring,
+    run_full_pipeline_with_monitoring,
+)
 
 
 def parse_args():
@@ -69,31 +69,37 @@ def main():
 
     if args.coverage_file:
         excel_file = require_existing_file(args.coverage_file)
-        run_coverage_pipeline(excel_file, source_mode="local", logger=print)
+        run_coverage_with_monitoring(excel_file, source_mode="local", logger=print)
     elif args.coverage_portal:
-        print("\nDownloading Coverage file from portal...")
-        excel_file = download_coverage_from_portal(start_date=start_date, end_date=end_date)
-        print(f"Downloaded Coverage file: {excel_file}")
-        run_coverage_pipeline(excel_file, source_mode="portal", logger=print)
-    else:
-        if args.portal:
-            print("\nDownloading Data Dump file from portal...")
-            excel_file = download_excel_from_portal()
-            print(f"Downloaded Data Dump file: {excel_file}")
-            downloaded_from_portal = True
-        else:
-            excel_file = require_existing_file(args.excel_file)
-            downloaded_from_portal = False
-
-        run_data_dump_pipeline(
-            excel_file,
-            downloaded_from_portal=downloaded_from_portal,
-            should_run_validation=resolve_validation_mode(args, downloaded_from_portal),
+        run_full_pipeline_with_monitoring(
+            include_data_dump=False,
+            include_coverage=True,
+            source_mode="portal",
             start_date=start_date,
             end_date=end_date,
-            source_mode="portal" if downloaded_from_portal else "local",
             logger=print,
         )
+    else:
+        if args.portal:
+            run_full_pipeline_with_monitoring(
+                include_data_dump=True,
+                include_coverage=False,
+                source_mode="portal",
+                run_validation=resolve_validation_mode(args, downloaded_from_portal=True),
+                start_date=start_date,
+                end_date=end_date,
+                logger=print,
+            )
+        else:
+            excel_file = require_existing_file(args.excel_file)
+            run_data_dump_with_monitoring(
+                excel_file,
+                run_validation=resolve_validation_mode(args, downloaded_from_portal=False),
+                source_mode="local",
+                start_date=start_date,
+                end_date=end_date,
+                logger=print,
+            )
 
     print("\n===== PROJECT RUN COMPLETED SUCCESSFULLY =====")
 
