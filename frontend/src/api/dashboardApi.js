@@ -1,4 +1,7 @@
-const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:9000";
+const API_BASE =
+  process.env.REACT_APP_API_BASE_URL ||
+  process.env.REACT_APP_API_BASE ||
+  "http://localhost:9000";
 
 async function requestDashboard(path, errorMessage) {
   const response = await fetch(`${API_BASE}${path}`);

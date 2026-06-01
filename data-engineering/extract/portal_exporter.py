@@ -10,9 +10,24 @@ from config.env_loader import load_project_env
 
 
 load_project_env()
-PORTAL_URL = os.getenv("PORTAL_URL", "https://smartmanagement.smollan.com/#/login")
-PORTAL_USER = os.getenv("PORTAL_USER", "")
-PORTAL_PASS = os.getenv("PORTAL_PASS", "")
+
+
+def env_value(*names: str, default: str = "") -> str:
+    for name in names:
+        value = os.getenv(name)
+        if value is not None and value.strip():
+            return value.strip()
+
+    return default
+
+
+PORTAL_URL = env_value(
+    "PORTAL_BASE_URL",
+    "PORTAL_URL",
+    default="https://smartmanagement.smollan.com/#/login",
+)
+PORTAL_USER = env_value("PORTAL_USERNAME", "PORTAL_USER")
+PORTAL_PASS = env_value("PORTAL_PASSWORD", "PORTAL_PASS")
 PORTAL_ENTITY = os.getenv("PORTAL_ENTITY", "Morocco Unilever").strip()
 DATA_DUMP_REPORT_NAME = os.getenv("DATA_DUMP_REPORT_NAME", "Data Dump").strip()
 COVERAGE_REPORT_NAME = os.getenv("COVERAGE_REPORT_NAME", "Coverage Data").strip()
@@ -30,7 +45,7 @@ def resolve_download_dir(download_dir=None) -> Path:
     if download_dir:
         return Path(download_dir).expanduser().resolve()
 
-    env_dir = os.getenv("UNILEVER_DOWNLOAD_DIR") or os.getenv("UNILEVER_INBOUND_DIR")
+    env_dir = env_value("DOWNLOAD_DIR", "UNILEVER_DOWNLOAD_DIR", "UNILEVER_INBOUND_DIR")
     if env_dir:
         return Path(env_dir).expanduser().resolve()
 
@@ -415,7 +430,7 @@ def run(
     file_prefix = (file_prefix or report_name).strip()
 
     if not PORTAL_USER or not PORTAL_PASS:
-        raise RuntimeError("Missing PORTAL_USER or PORTAL_PASS environment variables.")
+        raise RuntimeError("Missing PORTAL_USERNAME or PORTAL_PASSWORD environment variables.")
 
     resolved_download_dir = resolve_download_dir(download_dir)
     resolved_download_dir.mkdir(parents=True, exist_ok=True)
@@ -698,7 +713,7 @@ def download_daily_reports_from_portal(
         return {}
 
     if not PORTAL_USER or not PORTAL_PASS:
-        raise RuntimeError("Missing PORTAL_USER or PORTAL_PASS environment variables.")
+        raise RuntimeError("Missing PORTAL_USERNAME or PORTAL_PASSWORD environment variables.")
 
     resolved_download_dir = resolve_download_dir(download_dir)
     resolved_download_dir.mkdir(parents=True, exist_ok=True)

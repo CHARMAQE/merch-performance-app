@@ -85,7 +85,7 @@ http://localhost:9000
 Override it locally with:
 
 ```env
-REACT_APP_API_BASE=http://localhost:9000
+REACT_APP_API_BASE_URL=http://localhost:9000
 ```
 
 If the backend is not running, the page will load but the map data will not appear.

@@ -217,17 +217,20 @@ database/schema.sql
 
 Important: see the known issues section before rerunning the schema many times.
 
-### 2. Configure Python Environment
+### 2. Configure Environment Files
 
-Create a local environment file:
+Environment examples are templates. Copy them locally and edit only the `.env` files:
 
 ```bash
-cp data-engineering/.env.example data-engineering/.env
+[ -f .env ] || cp .env.example .env
+[ -f data-engineering/.env ] || cp data-engineering/.env.example data-engineering/.env
+[ -f frontend/.env ] || cp frontend/.env.example frontend/.env
+[ -f mobile/.env ] || cp mobile/.env.example mobile/.env
 ```
 
-Then fill in your real local values.
+Then fill in your real local values where needed: portal credentials, download paths, mobile LAN IP, or database password if you changed it.
 
-Do not commit `data-engineering/.env`.
+Do not commit `.env` files. They are local and ignored by Git.
 
 ### 3. Install Python Dependencies
 

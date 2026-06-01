@@ -1,5 +1,7 @@
 # Python
 __pycache__/
+**/__pycache__/
+**pycache**/
 *.pyc
 .venv/
 venv/
@@ -26,6 +28,7 @@ Thumbs.db
 # Logs / debug
 *.log
 logs/
+*/logs/
 
 # LaTeX build artifacts
 *.aux
@@ -50,17 +53,23 @@ data-engineering/debug_timeout_export.png
 
 # Local secrets
 .env
-*.env.local
+.env.*
+!.env.example
 data-engineering/.env
+data-engineering/.env.*
+!data-engineering/.env.example
 frontend/.env
-frontend/.env.local
-frontend/.env.*.local
+frontend/.env.*
+!frontend/.env.example
 mobile/.env
-mobile/.env.local
-mobile/.env.*.local
+mobile/.env.*
+!mobile/.env.example
 
 # Optional local downloads
+downloads/
+temp_downloads/
 data-engineering/downloads/
+data-engineering/temp_downloads/
 data-engineering/inbound/
 data-engineering/backups/
 data-engineering/local-data/

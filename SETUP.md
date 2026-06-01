@@ -31,8 +31,10 @@ py -3.12 -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m playwright install chromium
-copy data-engineering\.env.example data-engineering\.env
-copy .env.example .env
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+if (-not (Test-Path data-engineering\.env)) { Copy-Item data-engineering\.env.example data-engineering\.env }
+if (-not (Test-Path frontend\.env)) { Copy-Item frontend\.env.example frontend\.env }
+if (-not (Test-Path mobile\.env)) { Copy-Item mobile\.env.example mobile\.env }
 ```
 
 Use Node 20 before installing frontend or mobile dependencies:
@@ -62,8 +64,10 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m playwright install chromium
-cp data-engineering/.env.example data-engineering/.env
-cp .env.example .env
+[ -f .env ] || cp .env.example .env
+[ -f data-engineering/.env ] || cp data-engineering/.env.example data-engineering/.env
+[ -f frontend/.env ] || cp frontend/.env.example frontend/.env
+[ -f mobile/.env ] || cp mobile/.env.example mobile/.env
 ```
 
 Use Node 20 before installing frontend or mobile dependencies:
@@ -75,6 +79,26 @@ nvm use 20.11.0
 node --version
 npm --version
 ```
+
+## Environment Files
+
+Each `.env.example` file is a safe template. Each copied `.env` file is local, ignored by Git, and must never be committed.
+
+Templates:
+
+- `.env.example`: Docker MySQL and Spring Boot backend defaults
+- `data-engineering/.env.example`: Python ETL, MySQL, Playwright portal, and local file paths
+- `frontend/.env.example`: React API base URL
+- `mobile/.env.example`: Expo API base URL for a physical phone
+
+Change only local `.env` files for:
+
+- real portal credentials
+- custom download, backup, or log paths
+- mobile LAN IP address
+- database password, if you changed the Docker default
+
+The ETL supports the standardized `MYSQL_*`, `PORTAL_USERNAME`, `PORTAL_PASSWORD`, and `DOWNLOAD_DIR` names. Older local `DB_*`, `PORTAL_USER`, `PORTAL_PASS`, and `UNILEVER_DOWNLOAD_DIR` names are still accepted for compatibility.
 
 ## MySQL With Docker
 
@@ -181,7 +205,7 @@ npm start
 Optional local API override:
 
 ```text
-REACT_APP_API_BASE=http://localhost:9000
+REACT_APP_API_BASE_URL=http://localhost:9000
 ```
 
 ## Run The Expo Mobile App

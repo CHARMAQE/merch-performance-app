@@ -104,34 +104,36 @@ data-engineering/.env
 Create it from the example:
 
 ```bash
-cp data-engineering/.env.example data-engineering/.env
+[ -f data-engineering/.env ] || cp data-engineering/.env.example data-engineering/.env
 ```
 
 Required database values:
 
 ```env
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_password_here
-DB_NAME=unilever_db
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_DATABASE=unilever_db
+MYSQL_USER=root
+MYSQL_PASSWORD=Root@123
 ```
 
 Portal download values:
 
 ```env
-PORTAL_URL=https://smartmanagement.smollan.com/#/login
-PORTAL_USER=your_portal_user
-PORTAL_PASS=your_portal_password
+PORTAL_BASE_URL=https://smartmanagement.smollan.com/#/login
+PORTAL_USERNAME=
+PORTAL_PASSWORD=
 PORTAL_ENTITY=Morocco Unilever
 DATA_DUMP_REPORT_NAME=Data Dump
 COVERAGE_REPORT_NAME=Coverage Data
 COVERAGE_LOOKBACK_DAYS=3
-UNILEVER_DOWNLOAD_DIR=./data-engineering/downloads
+DOWNLOAD_DIR=./data-engineering/downloads
+BACKUP_DIR=./data-engineering/backups
+LOG_DIR=./logs
 PORTAL_HEADLESS=false
 ```
 
-Do not commit `.env`.
+Do not commit `.env`. Older local `DB_*`, `PORTAL_USER`, `PORTAL_PASS`, and `UNILEVER_DOWNLOAD_DIR` names are still accepted for compatibility, but new setups should use the standardized names above.
 
 ## Important Files
 
@@ -168,8 +170,8 @@ COVERAGE_LOOKBACK_DAYS=3
 If you use this path, install Playwright:
 
 ```bash
-pip install playwright
-playwright install chromium
+python -m pip install -r requirements.txt
+python -m playwright install chromium
 ```
 
 ### `transform/build_base_tables.py`
