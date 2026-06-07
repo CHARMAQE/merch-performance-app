@@ -1,16 +1,19 @@
-\chapter*{Introduction generale}
-\addcontentsline{toc}{chapter}{Introduction generale}
+\chapter*{Introduction générale}
+\markboth{INTRODUCTION GÉNÉRALE}{}
+\addcontentsline{toc}{chapter}{Introduction générale}
 
-% TODO: Rediger l'introduction generale apres validation du plan final.
-% Elle devra presenter le contexte du PFE, le sujet, la demarche suivie et l'organisation du rapport.
+\hspace*{\parindent} Dans le secteur des biens de grande consommation, la performance commerciale ne dépend pas uniquement de la disponibilité des produits au niveau des entrepôts ou des circuits de distribution. Elle dépend également de la qualité de l'exécution réalisée sur le terrain, au niveau des points de vente. La présence effective des produits en rayon, le respect des standards de merchandising, la qualité du placement, la visibilité des marques et la fiabilité des informations remontées constituent des éléments essentiels pour assurer un suivi opérationnel efficace et soutenir la prise de décision.
 
-\section*{Contexte general du projet}
+Dans ce contexte, les entreprises accordent une importance croissante aux données issues des opérations terrain. Ces données permettent de suivre l’activité des équipes, d’évaluer la couverture des magasins, d’identifier les situations nécessitant une intervention et de produire des indicateurs destinés aux responsables opérationnels ainsi qu’aux clients. Toutefois, lorsque ces informations sont exploitées à travers plusieurs fichiers, rapports et traitements manuels, leur utilisation peut devenir complexe, répétitive et difficile à fiabiliser dans le temps.
 
-\section*{Presentation du sujet}
+Le présent Projet de Fin d’Études s’inscrit dans le cadre d’un stage réalisé au sein de Smollan Morocco, en tant que Data Analyst Intern, autour du projet Unilever. Smollan Morocco assure le suivi de l’exécution terrain des opérations de merchandising pour différents clients, dont Unilever. Dans ce cadre, les merchandisers effectuent leurs visites en magasin à travers l’application mobile Smart 3. Les données collectées sont ensuite synchronisées vers le portail Smollan, à partir duquel des fichiers Excel, notamment les fichiers Data Dump et Coverage, sont exportés et exploités par les équipes opérationnelles.
 
-\section*{Objectifs generaux}
+Ces fichiers constituent une base importante pour la production des rapports de suivi. Ils permettent notamment de préparer des rapports internes liés à la couverture, aux déviations, aux magasins couverts, non visités ou rejetés, ainsi que des rapports destinés au client portant sur des indicateurs tels que l’OSA, le SOS, la qualité, le planogramme ou encore les placements secondaires. Cependant, l’exploitation quotidienne de ces données reste fortement dépendante de fichiers Excel, de traitements séparés et de contrôles manuels. Cette situation limite la centralisation de l’information, rend le suivi historique moins fluide et complique l’identification rapide de certaines anomalies opérationnelles.
 
-\section*{Demarche adoptee}
+Le sujet de ce PFE porte ainsi sur la conception d’une solution data-driven pour le suivi et l’analyse des opérations de merchandising terrain du projet Unilever chez Smollan Morocco. L’objectif n’est pas de remplacer entièrement les outils et rapports existants, mais de proposer une approche complémentaire permettant de structurer les données, d’améliorer leur exploitation et de fournir aux équipes concernées une vision plus claire de l’activité terrain. La solution vise notamment à centraliser les données issues des exports, à automatiser une partie des traitements, à appliquer des règles de validation métier et à restituer les résultats à travers des supports de suivi adaptés aux besoins opérationnels.
 
-\section*{Organisation du rapport}
+La démarche adoptée repose d’abord sur l’analyse de l’existant et la compréhension du processus métier, depuis la visite effectuée par le merchandiser jusqu’à l’exploitation des données par les équipes internes. Ensuite, les principales sources de données ont été étudiées afin de définir un processus de traitement permettant de préparer, organiser et charger les informations dans une base de données relationnelle. Cette base constitue le socle de la solution et permet d’alimenter les différentes composantes mises en place, notamment les règles de validation, les interfaces de consultation et les tableaux de bord de suivi.
 
+Sur le plan méthodologique, la solution s’appuie sur une chaîne de traitement des données, une base relationnelle structurée et des outils de restitution orientés vers le suivi opérationnel. Des règles de validation métier ont également été intégrées afin d’identifier certaines situations nécessitant une revue, telles que des incohérences liées à la disponibilité des produits ou au contrôle des visites. L’ensemble de ces éléments permet de construire une solution progressive, adaptée aux besoins du projet et alignée avec le contexte réel de l’entreprise.
+
+Ce rapport présente les différentes étapes de réalisation du projet. Le premier chapitre décrit le contexte général du stage, l’organisme d’accueil et l’environnement métier du projet. Le deuxième chapitre analyse l’existant, les besoins identifiés et les limites du processus actuel. Les chapitres suivants présentent la solution retenue, son organisation générale, les choix effectués, les principales composantes mises en place, ainsi que les résultats obtenus. Enfin, le rapport se termine par une conclusion générale mettant en évidence les apports du travail réalisé, ses limites et les perspectives d’amélioration possibles.

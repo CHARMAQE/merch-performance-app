@@ -173,6 +173,11 @@ CREATE TABLE IF NOT EXISTS validation_results (
     severity VARCHAR(20) NOT NULL,
     details_json JSON NULL,
     detected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Review status values: PENDING, REVIEWED, CONFIRMED, IGNORED, NEEDS_ACTION.
+    review_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    review_comment TEXT NULL,
+    reviewed_by VARCHAR(100) NULL,
+    reviewed_at DATETIME NULL,
     INDEX idx_rule_code (rule_code),
     INDEX idx_run_id (run_id),
     INDEX idx_entity_type (entity_type),
@@ -180,6 +185,7 @@ CREATE TABLE IF NOT EXISTS validation_results (
     INDEX idx_store_code (store_code),
     INDEX idx_employee_code (employee_code),
     INDEX idx_product_code (product_code),
+    INDEX idx_review_status (review_status),
     INDEX idx_detected_at (detected_at),
     CONSTRAINT fk_validation_results_run
         FOREIGN KEY (run_id) REFERENCES validation_run_log(run_id),

@@ -3,8 +3,14 @@ import pandas as pd
 from transform.etl_helpers import clean_float, clean_text
 
 
-def prepare_source_dataframe(excel_file):
+def read_source_excel(excel_file):
     df = pd.read_excel(excel_file)
+    df.columns = df.columns.str.strip().str.lower()
+    return df
+
+
+def normalize_source_dataframe(source_df):
+    df = source_df.copy()
     df.columns = df.columns.str.strip().str.lower()
 
     df["date"] = pd.to_datetime(df["dateid"].astype(str), format="%Y%m%d", errors="coerce")
@@ -16,6 +22,10 @@ def prepare_source_dataframe(excel_file):
     )
 
     return df
+
+
+def prepare_source_dataframe(excel_file):
+    return normalize_source_dataframe(read_source_excel(excel_file))
 
 
 def build_employees_dataframe(df):

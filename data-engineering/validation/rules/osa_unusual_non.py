@@ -13,6 +13,11 @@ RULE_DESCRIPTION = (
 SOURCE_TABLE = "survey_responses"
 SEVERITY = "MEDIUM"
 ENTITY_TYPE = "survey_response"
+MT_STORE_FORMATS = (
+    "HYPERMARKET",
+    "SUPERMARKET LOWER",
+    "SUPERMARKET UPPER",
+)
 
 
 def _banner_case_sql() -> str:
@@ -42,6 +47,40 @@ def _normalize_target_visit_ids(target_visit_ids: list[int] | None) -> list[int]
     return sorted({int(visit_id) for visit_id in target_visit_ids})
 
 
+def _mt_store_format_filter_sql(alias: str = "s") -> str:
+    formatted_values = ", ".join(f"'{store_format}'" for store_format in MT_STORE_FORMATS)
+    return f"UPPER(TRIM(COALESCE({alias}.store_format, ''))) IN ({formatted_values})"
+
+
+def _count_mt_scope(cursor, normalized_target_visit_ids: list[int] | None) -> tuple[int, int]:
+    target_filter_sql = ""
+    query_params: tuple[int, ...] = ()
+
+    if normalized_target_visit_ids is not None:
+        placeholders = ",".join(["%s"] * len(normalized_target_visit_ids))
+        target_filter_sql = f" AND sr.visit_id IN ({placeholders})"
+        query_params = tuple(normalized_target_visit_ids)
+
+    cursor.execute(
+        f"""
+        SELECT
+            COUNT(*) AS row_count,
+            COUNT(DISTINCT sr.store_code) AS store_count
+        FROM survey_responses sr
+        JOIN visits v ON v.visit_id = sr.visit_id
+        JOIN stores s ON s.store_id = v.store_id
+        WHERE sr.product_code IS NOT NULL
+          AND sr.response IN ('Oui', 'Non')
+          AND UPPER(sr.question) LIKE '%DISPONIBLE%'
+          AND {_mt_store_format_filter_sql("s")}
+          {target_filter_sql}
+        """,
+        query_params,
+    )
+    row = cursor.fetchone() or {}
+    return int(row.get("row_count") or 0), int(row.get("store_count") or 0)
+
+
 def run(run_id: int, target_visit_ids: list[int] | None = None) -> int:
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
@@ -51,6 +90,15 @@ def run(run_id: int, target_visit_ids: list[int] | None = None) -> int:
         cursor.close()
         conn.close()
         return 0
+
+    mt_rows_considered, mt_stores_considered = _count_mt_scope(
+        cursor,
+        normalized_target_visit_ids,
+    )
+    print(
+        f"OSA validation scope: {mt_rows_considered} MT OSA rows across "
+        f"{mt_stores_considered} MT stores considered."
+    )
 
     banner_case = _banner_case_sql()
     target_filter_sql = ""
@@ -80,6 +128,7 @@ def run(run_id: int, target_visit_ids: list[int] | None = None) -> int:
         WHERE sr.product_code IS NOT NULL
           AND sr.response IN ('Oui', 'Non')
           AND UPPER(sr.question) LIKE '%DISPONIBLE%'
+          AND {_mt_store_format_filter_sql("s")}
     ),
     osa_weekly AS (
         SELECT
@@ -126,7 +175,7 @@ def run(run_id: int, target_visit_ids: list[int] | None = None) -> int:
      AND b.product_code = w.product_code
      AND b.question = w.question
     WHERE b.response = 'Non'
-      AND w.availability_rate >= 80
+      AND w.availability_rate >= 90
       {target_filter_sql}
     """
 
@@ -216,6 +265,7 @@ def run(run_id: int, target_visit_ids: list[int] | None = None) -> int:
     conn.commit()
     cursor.close()
     conn.close()
+    print(f"OSA validation issues generated: {inserted}")
     return inserted
 
 

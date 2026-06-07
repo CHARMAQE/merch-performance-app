@@ -51,14 +51,22 @@ python data-engineering/main.py
 
 The desktop launcher is still the main user interface. When a user starts a Daily Pipeline job, the launcher calls the monitored orchestration layer internally. Manual Excel upload and portal automation both remain available.
 
-Prefect adds observability around the existing ETL code:
+The main Prefect flow is:
 
-- step started, succeeded, or failed
-- database connection check before loading
-- portal download retry for fragile browser/export steps
-- Data Dump and Coverage file paths used
-- validation status when Data Dump validation is enabled
-- final run summary in terminal and launcher logs
+```text
+Merch Performance Daily ETL Orchestration
+```
+
+Prefect now exposes the pipeline as a readable Master-level orchestration. The main run is organized into section flows, and each section contains only stage-sized tasks:
+
+- `Pre-run checks`
+- `Input acquisition and traceability`
+- `Data Dump processing`
+- `Validation processing` when Data Dump validation is enabled
+- `Coverage processing`
+- `Final execution summary`
+
+Low-level dataframe builders, SQL cursor operations, idempotency deletion loops, dynamic task-table DDL, and validation SQL stay inside normal Python functions. They still write logs to Prefect and to the launcher, but they do not clutter the flow graph.
 
 The Prefect UI/server is optional. If no Prefect server is running, the flow still runs locally and logs normally. To inspect runs in the local UI, start the server separately and open `http://localhost:4200`:
 
@@ -69,32 +77,39 @@ prefect server start
 `data-engineering/prefect_flow.py` remains only as a developer/debug command for testing the orchestration layer directly. It is not the normal user workflow:
 
 ```bash
-python data-engineering/prefect_flow.py --data-dump-file "C:\path\to\data-dump.xlsx"
+python data-engineering/prefect_flow.py --data-dump-file "C:\path\to\data-dump.xlsx" --run-validation
 ```
 
 Scheduling and deployments can be added later. This project intentionally does not create a scheduled deployment or a `daily_run.py` file.
 
-The run does this:
+Important Prefect structure visible in the UI:
 
-1. Ask for the source type:
-   - local Data Dump Excel file
-   - automatic Data Dump portal download
-   - local Coverage Excel file
-   - automatic Coverage portal download
-2. Optionally filter rows by visit date.
-3. Read the Excel file into a pandas dataframe.
-4. Build base table dataframes:
-   - employees
-   - stores
-   - products
-   - visits
-5. Load base tables into MySQL.
-6. Detect task rows and map them to dynamic `task_*` tables.
-7. Create or alter dynamic task tables as needed.
-8. Load task responses.
-9. Build `survey_responses`.
-10. Load `survey_responses`.
-11. Run database validation rules when validation mode is enabled.
+1. `Pre-run checks`
+   - `Pre-run - environment/options check`
+   - `Pre-run - MySQL connection check`
+2. `Input acquisition and traceability`
+   - `Input - acquire source files`
+   - `Input - validate Excel files`
+   - `Input - backup raw files`
+3. `Data Dump processing`
+   - `Data Dump - read and normalize`
+   - `Data Dump - prepare/load dimensions and visits`
+   - `Data Dump - generate/load task tables`
+   - `Data Dump - build/load survey_responses`
+   - `Data Dump - finish run log`
+4. `Validation processing`
+   - `Validation - initialize validation run`
+   - `Validation - sync active rules`
+   - `Validation - execute OSA MT rule`
+   - `Validation - execute GPS GT rule`
+   - `Validation - load validation summary`
+5. `Coverage processing`
+   - `Coverage - read and normalize`
+   - `Coverage - prepare/load fact_coverage`
+   - `Coverage - finish run log`
+6. `Final execution summary`
+
+For the PFE report, capture screenshots of the main Prefect run showing the section flows, the Data Dump processing subflow, the Validation processing subflow, the final summary logs, and the matching MySQL `etl_run_log` / `validation_run_log` rows created by the same execution.
 
 ## Folder Structure
 

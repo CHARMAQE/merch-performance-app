@@ -1,5 +1,13 @@
 from datetime import datetime
+from pathlib import Path
+import sys
+
 import mysql.connector
+
+# Make imports work no matter where this file is executed from
+DATA_ENGINEERING_DIR = Path(__file__).resolve().parents[1]
+if str(DATA_ENGINEERING_DIR) not in sys.path:
+    sys.path.insert(0, str(DATA_ENGINEERING_DIR))
 
 from config.db_config import DB_CONFIG
 from validation.engine.validation_engine import run_all_validations

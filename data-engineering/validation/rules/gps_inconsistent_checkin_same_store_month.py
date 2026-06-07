@@ -26,6 +26,7 @@ MIN_VISITS_PER_MONTH = 3
 WARNING_DISTANCE_METERS = 1000
 HIGH_DISTANCE_METERS = 2000
 RULE_QUESTION = "Monthly GPS consistency check for repeated visits to the same store"
+GT_STORE_FORMATS = ("GROCERY", "CASH AND CARRY")
 
 
 @dataclass(frozen=True)
@@ -36,10 +37,16 @@ class VisitGps:
     username: str | None
     store_code: str
     store_name: str | None
+    store_format: str | None
     year_num: int
     month_num: int
     latitude: float
     longitude: float
+
+
+def _gt_store_format_filter_sql(alias: str = "s") -> str:
+    formatted_values = ", ".join(f"'{store_format}'" for store_format in GT_STORE_FORMATS)
+    return f"UPPER(TRIM(COALESCE({alias}.store_format, ''))) IN ({formatted_values})"
 
 
 def _haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -63,6 +70,7 @@ def _fetch_visit_gps_rows(cursor) -> list[VisitGps]:
             e.username,
             s.store_code,
             s.store_name,
+            s.store_format,
             YEAR(v.visit_date) AS year_num,
             MONTH(v.visit_date) AS month_num,
             CAST(v.latitude AS DECIMAL(10,6)) AS latitude,
@@ -75,6 +83,7 @@ def _fetch_visit_gps_rows(cursor) -> list[VisitGps]:
           AND v.longitude IS NOT NULL
           AND v.latitude <> 0
           AND v.longitude <> 0
+          AND """ + _gt_store_format_filter_sql("s") + """
         ORDER BY
             e.employee_code,
             s.store_code,
@@ -96,6 +105,7 @@ def _fetch_visit_gps_rows(cursor) -> list[VisitGps]:
                 username=row.get("username"),
                 store_code=str(row["store_code"]),
                 store_name=row.get("store_name"),
+                store_format=row.get("store_format"),
                 year_num=int(row["year_num"]),
                 month_num=int(row["month_num"]),
                 latitude=float(row["latitude"]),
@@ -129,6 +139,11 @@ def run(run_id: int, target_visit_ids: list[int] | None = None) -> int:
             return 0
 
         rows = _fetch_visit_gps_rows(cursor)
+        gt_store_count = len({row.store_code for row in rows})
+        print(
+            f"GPS validation scope: {len(rows)} GT GPS visit rows across "
+            f"{gt_store_count} GT stores considered."
+        )
         groups = _group_rows(rows)
 
         insert_sql = """
@@ -196,6 +211,7 @@ def run(run_id: int, target_visit_ids: list[int] | None = None) -> int:
                 details = {
                     "visit_date": str(visit.visit_date),
                     "store_name": visit.store_name,
+                    "store_format": visit.store_format,
                     "username": visit.username,
                     "year_num": year_num,
                     "month_num": month_num,
@@ -243,6 +259,7 @@ def run(run_id: int, target_visit_ids: list[int] | None = None) -> int:
             cursor.executemany(insert_sql, payloads)
 
         conn.commit()
+        print(f"GPS validation issues generated: {len(payloads)}")
         return len(payloads)
 
     finally:

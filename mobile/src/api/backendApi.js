@@ -1,5 +1,5 @@
 const LAN_API_BASE =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.1.150:9000";
+  process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.240.1:9000";
 const REQUEST_TIMEOUT_MS = 30000;
 
 export const API_BASE = LAN_API_BASE;

@@ -18,6 +18,48 @@
 \usepackage{caption}
 \usepackage[hidelinks]{hyperref}
 \usepackage{float}
+\usepackage{indentfirst}
+\usepackage{fancyhdr}
+\usepackage{tikz}
+% \usepackage{pdflscape}
+\usepackage[most]{tcolorbox}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{listings}
+
+
+\lstdefinestyle{daxstyle}{
+    basicstyle=\ttfamily\small,
+    frame=single,
+    breaklines=true,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    backgroundcolor=\color{gray!5},
+    rulecolor=\color{gray!50},
+    xleftmargin=0.2cm,
+    xrightmargin=0.2cm
+}
+
+\tcbset{
+    technicalbox/.style={
+        colback=gray!4,
+        colframe=black!60,
+        boxrule=0.6pt,
+        arc=2mm,
+        left=6pt,
+        right=6pt,
+        top=6pt,
+        bottom=6pt,
+        fonttitle=\bfseries,
+        coltitle=black,
+        colbacktitle=gray!15,
+        enhanced,
+        breakable
+    }
+}
+
+\usetikzlibrary{arrows.meta, positioning, calc}
 
 \hypersetup{
     pdftitle={Conception d'une solution data-driven pour le suivi et l'analyse des operations de merchandising terrain du projet Unilever chez Smollan Morocco},
@@ -31,6 +73,9 @@
     bottom=2.5cm
 }
 
+\setlength{\headheight}{14pt}
+
+
 \graphicspath{
     {figures/}
     {figures/architecture/}
@@ -39,6 +84,7 @@
     {figures/etl/}
     {figures/mobile/}
     {figures/validation/}
+    {figures/technologies/}
 }
 
 \setlength{\parindent}{1.25cm}
@@ -50,7 +96,14 @@
 \setcounter{secnumdepth}{3}
 \setcounter{tocdepth}{3}
 
-\pagestyle{headings}
+\pagestyle{fancy}
+\fancyhf{}
+
+\fancyhead[L]{\small\itshape\nouppercase{\leftmark}}
+\fancyfoot[C]{\thepage}
+
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
 
 \titleformat{\chapter}[hang]
 {\normalfont\fontsize{16}{19.2}\bfseries}
@@ -92,7 +145,17 @@
 \renewcommand{\figurename}{Figure}
 \renewcommand{\tablename}{Tableau}
 \renewcommand{\chaptermark}[1]{\markboth{Chapitre \thechapter{} : #1}{}}
+
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyhead[L]{\small\itshape\nouppercase{\leftmark}}
+    \fancyfoot[C]{\thepage}
+    \renewcommand{\headrulewidth}{0.4pt}
+}
+
 \let\cleardoublepage\clearpage
+
+\DeclareRobustCommand{\dbtable}[1]{\textit{#1}}
 
 \begin{document}
 
@@ -110,12 +173,23 @@
 \clearpage
 \input{frontmatter/abstract}
 \clearpage
+\markboth{TABLE DES MATIÈRES}{}
 \tableofcontents
 \clearpage
+
+\phantomsection
+\markboth{LISTE DES FIGURES}{}
+\addcontentsline{toc}{chapter}{Liste des figures}
 \listoffigures
 \clearpage
+
+\phantomsection
+\markboth{LISTE DES TABLEAUX}{}
+\addcontentsline{toc}{chapter}{Liste des tableaux}
 \listoftables
 \clearpage
+
+\markboth{LISTE DES ABRÉVIATIONS}{}
 \input{frontmatter/abbreviations}
 \clearpage
 
@@ -125,11 +199,8 @@
 \input{chapters/chapitre1_contexte}
 \input{chapters/chapitre2_analyse_besoins}
 \input{chapters/chapitre3_architecture_data}
-\input{chapters/chapitre4_business_intelligence}
-\input{chapters/chapitre5_application_web_mobile}
-\input{chapters/chapitre6_tests_resultats}
-\input{chapters/chapitre7_backoffice_validation}
-\input{chapters/chapitre8_resultats_limites_perspectives}
+\input{chapters/chapitre4_developpement_solution}
+\input{chapters/chapitre5_realisation_tests_resultats}
 \input{chapters/conclusion_generale}
 
 \clearpage

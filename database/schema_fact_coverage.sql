@@ -51,3 +51,21 @@ CREATE TABLE IF NOT EXISTS fact_coverage (
     KEY idx_fact_coverage_store (store_code),
     KEY idx_fact_coverage_status (is_planned, is_done, not_visited, deviation)
 );
+
+CREATE OR REPLACE VIEW vw_fact_coverage_visit_match AS
+SELECT
+    fc.*,
+    v.visit_id,
+    CASE
+        WHEN v.visit_id IS NOT NULL THEN 'MATCHED'
+        ELSE 'NO_DATA_DUMP_VISIT'
+    END AS match_status
+FROM fact_coverage fc
+LEFT JOIN employees e
+    ON e.employee_code = fc.employee_code
+LEFT JOIN stores s
+    ON s.store_code = fc.store_code
+LEFT JOIN visits v
+    ON v.visit_date = fc.visit_date
+   AND v.employee_id = e.employee_id
+   AND v.store_id = s.store_id;

@@ -4,9 +4,9 @@
 
 Ce chapitre présente l’état de l’existant relatif au suivi des opérations terrain du projet Unilever. Il décrit le fonctionnement actuel du processus de reporting, les principales sources de données exploitées, ainsi que les rapports produits à partir des exports issus de la plateforme Smollan.
 
-Il introduit également les notions métier et techniques nécessaires à la compréhension du projet. Ainsi, le chapitre joue un double rôle : présenter l’information existante dans son contexte opérationnel et clarifier les concepts liés au merchandising terrain, aux indicateurs de suivi et à l’exploitation des données.
+Il introduit également les notions nécessaires à la compréhension du contexte métier, notamment le merchandising terrain, les indicateurs de suivi opérationnel et l’exploitation des données issues des visites en magasin. Cette présentation permet de situer les données utilisées dans leur environnement réel avant d’analyser les limites du fonctionnement actuel.
 
-L’objectif est d’identifier les limites du fonctionnement actuel et de dégager les besoins fonctionnels et techniques auxquels la solution proposée doit répondre. Cette analyse constitue une étape essentielle avant la conception de l’architecture globale du projet.
+L’objectif de ce chapitre est d’identifier les difficultés rencontrées dans l’exploitation des données terrain et de dégager les besoins auxquels la solution proposée doit répondre. Cette analyse constitue une étape de transition entre le cadrage général du projet et la conception de la solution retenue.
 
 \section{Cadre théorique du projet}
 
@@ -18,15 +18,219 @@ Dans le cadre des opérations suivies par Smollan, ces actions sont réalisées 
 
 \subsection{Indicateurs de suivi opérationnel}
 
-Le pilotage des opérations de merchandising repose sur plusieurs indicateurs permettant de mesurer l’avancement des visites et la qualité de l’exécution. La couverture permet de suivre les magasins planifiés, visités ou non visités. Les visites exécutées indiquent les interventions effectivement réalisées, tandis que les déviations et les visites rejetées signalent des situations nécessitant une vérification ou une action de suivi.
+Le pilotage des opérations de merchandising terrain repose sur plusieurs indicateurs permettant de mesurer l’avancement des visites, la qualité de l’exécution en magasin et la disponibilité des produits. Dans le cadre du projet Unilever, ces indicateurs sont utilisés pour le suivi interne des opérations, la préparation des reportings destinés au client et l’identification des situations nécessitant une vérification.
 
-D’autres indicateurs concernent directement l’exécution commerciale en magasin. L’OSA permet d’évaluer la disponibilité des produits en rayon. Le SOS (\textit{Share of Shelf}) mesure la part de linéaire occupée par une marque ou une catégorie. La qualité d’exécution et le respect du planogramme permettent de vérifier si les produits sont présentés conformément aux standards attendus. Ces indicateurs sont complémentaires, car ils permettent d’analyser à la fois l’avancement terrain et la qualité des actions réalisées.
+%====================================================
+
+\subsubsection{Taux de couverture}
+
+Le taux de couverture constitue l’un des indicateurs fondamentaux du suivi des opérations terrain. Il mesure la capacité des équipes merchandising à couvrir les points de vente planifiés durant une période donnée.
+
+Dans le cadre du projet Unilever, cet indicateur est principalement exploité à partir du fichier \textit{Coverage}, qui permet de suivre les visites planifiées, réalisées, non visitées, rejetées ou en déviation.
+
+La formulation mathématique du taux de couverture est donnée par :
+
+\[
+\mathrm{Coverage\ Rate} =
+\frac{N_{\mathrm{executed\_visits}}}
+{N_{\mathrm{planned\_visits}}}
+\times 100
+\]
+
+où :
+
+\begin{itemize}
+    \item $N_{\mathrm{executed\_visits}}$ représente le nombre de visites réellement exécutées ;
+    \item $N_{\mathrm{planned\_visits}}$ représente le nombre de visites prévues dans le plan de couverture.
+\end{itemize}
+
+Un faible taux de couverture peut traduire généralement :
+
+\begin{itemize}
+    \item des magasins planifiés mais non visités ;
+    \item des contraintes terrain ou organisationnelles ;
+    \item un écart entre le planning prévu et l’exécution réelle.
+\end{itemize}
+
+%====================================================
+
+\subsubsection{Taux de déviation}
+
+La déviation correspond à un écart entre le plan d’exécution prévu et l’exécution réellement observée sur le terrain. Elle permet d’identifier les situations où la visite ne respecte pas totalement le planning ou les conditions attendues.
+
+Dans le suivi opérationnel, le taux de déviation permet de mesurer la part des visites en déviation par rapport aux visites planifiées.
+
+La formulation mathématique du taux de déviation est donnée par :
+
+\[
+\mathrm{Deviation\ Rate} =
+\frac{N_{\mathrm{deviation\_visits}}}
+{N_{\mathrm{planned\_visits}}}
+\times 100
+\]
+
+où :
+
+\begin{itemize}
+    \item $N_{\mathrm{deviation\_visits}}$ représente le nombre de visites signalées en déviation ;
+    \item $N_{\mathrm{planned\_visits}}$ représente le nombre total de visites planifiées.
+\end{itemize}
+
+Une augmentation du taux de déviation peut indiquer :
+
+\begin{itemize}
+    \item un écart entre la planification et l’exécution terrain ;
+    \item des visites nécessitant une justification ;
+    \item un besoin de suivi opérationnel par les équipes internes.
+\end{itemize}
+
+%====================================================
+
+\subsubsection{Taux de rejet}
+
+Le taux de rejet permet de suivre les visites qui n’ont pas été validées dans le processus opérationnel. Une visite rejetée peut être liée à une information incomplète, à une incohérence dans les données remontées ou à un problème de conformité avec les règles de suivi.
+
+La formulation mathématique du taux de rejet est donnée par :
+
+\[
+\mathrm{Rejection\ Rate} =
+\frac{N_{\mathrm{rejected\_visits}}}
+{N_{\mathrm{executed\_visits}}}
+\times 100
+\]
+
+où :
+
+\begin{itemize}
+    \item $N_{\mathrm{rejected\_visits}}$ représente le nombre de visites rejetées ;
+    \item $N_{\mathrm{executed\_visits}}$ représente le nombre total de visites exécutées.
+\end{itemize}
+
+Un taux de rejet élevé peut traduire généralement :
+
+\begin{itemize}
+    \item des problèmes dans la qualité des informations saisies ;
+    \item des visites nécessitant une correction ou une justification ;
+    \item un besoin de validation ou de contrôle interne plus approfondi.
+\end{itemize}
+
+%====================================================
+
+\subsubsection{Disponibilité produit : OSA}
+
+L’OSA, ou \textit{On Shelf Availability}, représente la disponibilité effective des produits en rayon au moment de la visite. Cet indicateur est important dans le merchandising, car il permet de vérifier si les références contrôlées sont bien présentes dans le point de vente.
+
+Dans le cadre du projet Unilever, l’OSA constitue un indicateur clé pour les reportings client et pour l’identification des situations nécessitant une validation métier.
+
+La formulation mathématique de l’OSA est donnée par :
+
+\[
+\mathrm{OSA} =
+\frac{N_{\mathrm{available\_products}}}
+{N_{\mathrm{checked\_products}}}
+\times 100
+\]
+
+où :
+
+\begin{itemize}
+    \item $N_{\mathrm{available\_products}}$ représente le nombre de produits disponibles en rayon ;
+    \item $N_{\mathrm{checked\_products}}$ représente le nombre total de produits contrôlés.
+\end{itemize}
+
+Un faible niveau d’OSA peut traduire généralement :
+
+\begin{itemize}
+    \item une rupture ou une absence de produit en rayon ;
+    \item une exécution non conforme au niveau du point de vente ;
+    \item une situation nécessitant une analyse ou une action corrective.
+\end{itemize}
+
+%====================================================
+
+\subsubsection{Visibilité en rayon : SOS}
+
+Le SOS, ou \textit{Share of Shelf}, représente la part d’espace occupée par une marque ou une catégorie dans le linéaire. Il permet d’évaluer la visibilité des produits en magasin par rapport à l’espace total disponible dans la catégorie concernée.
+
+La formulation mathématique du SOS est donnée par :
+
+\[
+\mathrm{SOS} =
+\frac{\mathrm{ShelfSpace}_{\mathrm{brand}}}
+{\mathrm{ShelfSpace}_{\mathrm{category}}}
+\times 100
+\]
+
+où :
+
+\begin{itemize}
+    \item $\mathrm{ShelfSpace}_{\mathrm{brand}}$ représente l’espace occupé par la marque ;
+    \item $\mathrm{ShelfSpace}_{\mathrm{category}}$ représente l’espace total de la catégorie.
+\end{itemize}
+
+Une amélioration du SOS peut contribuer à :
+
+\begin{itemize}
+    \item renforcer la visibilité des produits en rayon ;
+    \item améliorer la présence de la marque dans la catégorie ;
+    \item soutenir l’analyse de la qualité d’exécution en magasin.
+\end{itemize}
+
+%====================================================
+
+\subsubsection{Planogramme et placements}
+
+Le planogramme représente l’organisation attendue des produits dans le linéaire. Il permet de définir l’emplacement des références, leur ordre de présentation et leur disposition dans le rayon selon des règles merchandising précises.
+
+Le placement primaire correspond à l’emplacement principal du produit dans le rayon. Le placement secondaire concerne les espaces additionnels permettant de renforcer la visibilité, tels que les têtes de gondole, les zones promotionnelles ou les emplacements spécifiques.
+
+Le respect du planogramme et des placements permet généralement :
+
+\begin{itemize}
+    \item d’assurer une présentation cohérente des produits ;
+    \item d’améliorer la visibilité en point de vente ;
+    \item de vérifier la conformité de l’exécution terrain avec les standards attendus.
+\end{itemize}
+
+Dans le cadre du projet, ces informations sont principalement exploitées à partir du fichier \textit{Data Dump}, qui contient les réponses renseignées par les merchandisers lors des visites.
+
+%====================================================
+
+\subsubsection{Taux de complétion des tâches}
+
+Le taux de complétion des tâches permet d’évaluer la part des tâches effectivement renseignées par rapport aux tâches attendues lors d’une visite. Il donne une indication sur le niveau de complétude des informations collectées par les merchandisers.
+
+La formulation mathématique du taux de complétion des tâches est donnée par :
+
+\[
+\mathrm{Task\ Completion\ Rate} =
+\frac{N_{\mathrm{completed\_tasks}}}
+{N_{\mathrm{expected\_tasks}}}
+\times 100
+\]
+
+où :
+
+\begin{itemize}
+    \item $N_{\mathrm{completed\_tasks}}$ représente le nombre de tâches réalisées ou renseignées ;
+    \item $N_{\mathrm{expected\_tasks}}$ représente le nombre total de tâches attendues.
+\end{itemize}
+
+Un faible taux de complétion peut indiquer :
+
+\begin{itemize}
+    \item des informations terrain incomplètes ;
+    \item des tâches non renseignées lors de la visite ;
+    \item une difficulté à produire des indicateurs fiables pour le suivi et l’analyse.
+\end{itemize}
+
+Ainsi, les indicateurs de suivi opérationnel permettent de dépasser la simple mesure du nombre de visites réalisées. Ils offrent une lecture plus complète de l’exécution terrain, en combinant l’avancement des visites, la disponibilité produit, la visibilité en rayon, la conformité merchandising et la qualité des données collectées.
 
 \subsection{Exploitation des données terrain}
 
-Les données terrain ne peuvent pas être exploitées efficacement lorsqu’elles restent dispersées dans plusieurs fichiers ou rapports séparés. Avant leur utilisation dans des tableaux de bord, une application mobile ou un portail back-office, elles doivent être nettoyées, structurées et centralisées dans un modèle cohérent.
+Les données terrain ne peuvent pas être exploitées efficacement lorsqu’elles restent dispersées dans plusieurs fichiers ou rapports séparés. Avant leur utilisation dans des tableaux de bord ou dans des interfaces de consultation, elles doivent être nettoyées, structurées et centralisées dans un modèle cohérent.
 
-Cette centralisation permet de conserver un historique exploitable, de rapprocher les informations issues de différentes sources et de produire des indicateurs fiables. Elle facilite également la distinction entre les usages internes et les usages orientés client. Les tableaux de bord servent au pilotage et à l’analyse, l’application mobile permet une consultation ciblée des informations par les superviseurs concernés, tandis que le portail back-office reste destiné aux validations et contrôles internes.
+Cette centralisation permet de conserver un historique exploitable, de rapprocher les informations issues de différentes sources et de produire des indicateurs fiables. Elle facilite également la distinction entre les usages internes et les usages orientés client. Les tableaux de bord servent au pilotage et à l’analyse, les interfaces de consultation permettent un accès ciblé aux informations par les utilisateurs concernés, tandis que le portail back-office reste destiné aux validations et contrôles internes.
 
 Après avoir présenté ces notions générales, il convient d’analyser le fonctionnement actuel du suivi opérationnel afin d’identifier les limites auxquelles la solution proposée doit répondre.
 \section{Processus actuel de suivi opérationnel}
@@ -44,7 +248,7 @@ La figure suivante présente une vue simplifiée du processus actuel de reportin
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{figures/architecture/Processus_actuel_de_suivi_opérationnel.png}
+    \includegraphics[width=0.65\textwidth]{figures/architecture/Processus_actuel_de_suivi_opérationnel.png}
     \caption{Processus actuel de reporting merchandising basé sur Smart 3 et les exports Excel}
     \label{fig:current-reporting-process}
 \end{figure}
@@ -79,8 +283,7 @@ Les fichiers \textit{Data Dump} et \textit{Coverage} sont complémentaires. Le \
 
 Cette complémentarité est importante, car l’analyse de l’exécution terrain ne peut pas reposer uniquement sur les réponses détaillées des tâches. Par exemple, un magasin non visité ou une visite rejetée peut ne pas disposer du même niveau de détail dans le \textit{Data Dump}, alors que ces informations sont indispensables pour le suivi opérationnel. Le fichier \textit{Coverage} permet donc de compléter cette lecture en apportant le statut des visites et les informations de couverture.
 
-Dans le cadre de la solution développée, l’exploitation conjointe de ces deux sources permet de construire une base de données plus cohérente. Les données détaillées issues du \textit{Data Dump} alimentent les tables de tâches et les réponses normalisées, tandis que les données du \textit{Coverage} alimentent les indicateurs de suivi opérationnel. Cette approche permet d’obtenir une vision à la fois détaillée et globale des activités terrain.
-
+Dans le cadre de la solution proposée, l’exploitation conjointe de ces deux sources permet de construire une base de données plus cohérente. Les données détaillées issues du \textit{Data Dump} alimentent les tables de tâches et les réponses normalisées, tandis que les données du \textit{Coverage} alimentent les indicateurs de suivi opérationnel. Cette approche permet d’obtenir une vision à la fois détaillée et globale des activités terrain.
 
 Le tableau suivant synthétise le rôle de chaque source dans la solution proposée.
 
@@ -185,7 +388,7 @@ La deuxième limite concerne la dispersion des données entre plusieurs sources.
 
 Une autre limite concerne l'accès aux détails d'exécution par magasin. Les rapports existants permettent de suivre l'état global des opérations, mais l'accès rapide à l'historique d'un magasin, aux tâches exécutées, aux réponses terrain ou aux éléments justificatifs reste moins direct. Cette situation limite la capacité à consulter facilement une vision détaillée et structurée de l'exécution terrain.
 
-Enfin, les besoins de suivi ne sont pas identiques selon les utilisateurs. Les équipes internes ont besoin d'indicateurs de pilotage, de contrôle et de validation opérationnelle, tandis que les superviseurs côté client doivent disposer d'une consultation plus ciblée sur les magasins qui leur sont affectés. Cette différence d'usage montre la nécessité de distinguer les couches de restitution : tableaux de bord BI pour le pilotage, application mobile client pour la consultation des magasins affectés, et portail back-office pour le suivi interne des validations.
+Enfin, les besoins de suivi ne sont pas identiques selon les utilisateurs. Les équipes internes ont besoin d'indicateurs de pilotage, de contrôle et de validation opérationnelle, tandis que les superviseurs côté client doivent disposer d'une consultation plus ciblée sur les magasins qui leur sont affectés. Cette différence d'usage montre la nécessité de distinguer les couches de restitution : tableaux de bord BI pour le pilotage, interface de consultation client pour l’accès aux magasins affectés, et portail back-office pour le suivi interne des validations.
 
 \section{Besoins fonctionnels}
 
@@ -193,22 +396,22 @@ Enfin, les besoins de suivi ne sont pas identiques selon les utilisateurs. Les �
 
 Le premier besoin consiste à mettre en place une base de données centralisée capable de regrouper les informations issues des fichiers \textit{Data Dump} et \textit{Coverage}. Cette base doit permettre de conserver l'historique des données, de structurer les informations relatives aux visites, aux magasins, aux merchandisers, aux produits et aux tâches exécutées, et de faciliter leur exploitation dans les différentes couches de la solution.
 
-Le deuxième besoin concerne la mise à disposition de tableaux de bord décisionnels permettant de suivre l’avancement des opérations terrain et d’analyser les principaux indicateurs avant la restitution finale. Ces dashboards doivent aider au pilotage interne et au management, tout en facilitant la lecture des données liées à la couverture, à l’activité des merchandisers et à certains reportings client comme l’OSA, la qualité d’exécution, le SOS ou le placement en rayon.
+Le deuxième besoin concerne la mise à disposition de tableaux de bord décisionnels permettant de suivre l’avancement des opérations terrain et d’analyser les principaux indicateurs avant la restitution finale. Ces tableaux de bord doivent aider au pilotage interne et au management, tout en facilitant la lecture des données liées à la couverture, à l’activité des merchandisers et à certains reportings client comme l’OSA, la qualité d'exécution, le SOS ou le placement en rayon.
 
-Le troisième besoin concerne le développement d'une application mobile orientée client. Cette application doit permettre aux superviseurs côté Unilever de se connecter et de consulter uniquement les magasins qui leur sont affectés. L'objectif est de leur offrir une visibilité simple et ciblée sur l'exécution terrain, les informations des magasins, les dernières visites et les détails liés aux tâches exécutées.
+Le troisième besoin concerne la mise en place d’une interface de consultation orientée client. Cette interface doit permettre aux superviseurs côté Unilever de consulter les magasins qui leur sont affectés. L'objectif est de leur offrir une visibilité simple et ciblée sur l'exécution terrain, les informations des magasins, les dernières visites et les détails liés aux tâches exécutées.
 
 Le quatrième besoin porte sur la mise en place d'un portail back-office interne destiné au suivi des validations opérationnelles. Ce portail doit permettre d'exploiter les résultats des règles de validation, notamment les cas liés à l'OSA, aux contrôles GPS ou à d'autres situations nécessitant une vérification. Il doit constituer un espace interne de consultation, d'analyse et, à terme, de suivi des actions correctives.
 
-Ainsi, les besoins fonctionnels du projet ne se limitent pas à la production de tableaux de bord. Ils couvrent l'ensemble de la chaîne d'exploitation de la donnée, depuis l'ingestion des fichiers jusqu'à la restitution des informations sous forme de dashboards, d'application mobile client et de portail de validation interne.
+Ainsi, les besoins fonctionnels du projet ne se limitent pas à la production de tableaux de bord. Ils couvrent l'ensemble de la chaîne d'exploitation de la donnée, depuis l'ingestion des fichiers jusqu'à la restitution des informations sous forme de tableaux de bord, d’interface de consultation client et de portail de validation interne.
 
 
 \section{Besoins techniques}
 
 La mise en œuvre de la solution nécessite une architecture technique capable de traiter des fichiers Excel volumineux, de structurer les données et de les rendre exploitables par plusieurs outils. Le premier besoin technique concerne la mise en place d’un pipeline ETL développé en Python, permettant d’extraire, nettoyer, transformer et charger les données issues des fichiers \textit{Data Dump} et \textit{Coverage}.
 
-Le deuxième besoin concerne la centralisation des données dans une base MySQL. Cette base doit permettre de stocker les informations opérationnelles, les réponses terrain, les tables liées aux différentes tâches, ainsi que les indicateurs nécessaires aux tableaux de bord, à l’application mobile et au portail de validation.
+Le deuxième besoin concerne la centralisation des données dans une base MySQL. Cette base doit permettre de stocker les informations opérationnelles, les réponses terrain, les tables liées aux différentes tâches, ainsi que les indicateurs nécessaires aux tableaux de bord, aux interfaces de consultation et au portail de validation.
 
-Le troisième besoin porte sur la restitution et l’intégration des données. Les tableaux de bord sont réalisés avec Power BI afin de faciliter l’analyse et le pilotage des indicateurs. L’application mobile client et le portail back-office nécessitent une couche backend exposant des APIs, développée avec Spring Boot, afin de communiquer avec la base de données et de fournir les informations aux interfaces React.
+Le troisième besoin porte sur la restitution et l’intégration des données. Les tableaux de bord sont réalisés avec Power BI afin de faciliter l’analyse et le pilotage des indicateurs. Les interfaces de consultation et de validation s’appuient sur des services applicatifs permettant d’interroger la base de données et de restituer les informations nécessaires aux utilisateurs concernés.
 
 Enfin, la solution doit rester évolutive afin de permettre l’ajout progressif de nouvelles règles de validation, de nouvelles vues analytiques, de nouveaux fichiers sources comme les Masters, ainsi que des mécanismes d’authentification et de gestion des rôles plus avancés.
 
@@ -220,4 +423,4 @@ L’état de l’existant a ensuite permis d’analyser le fonctionnement actuel
 
 L’analyse des rapports existants a également mis en évidence la diversité des usages des données, entre le suivi interne des opérations et les reportings destinés au client Unilever. Malgré l’utilité de ce fonctionnement, plusieurs limites ont été identifiées, notamment la dépendance aux fichiers Excel, la dispersion des informations, la difficulté de constituer un historique centralisé et la nécessité d’adapter les restitutions selon les utilisateurs.
 
-Ces constats ont permis de définir les principaux besoins fonctionnels et techniques du projet. Ils justifient la mise en place d’une solution data-driven reposant sur une base de données centralisée, des tableaux de bord décisionnels, une application mobile client et un portail back-office de validation interne. Le chapitre suivant présentera la conception globale de cette solution ainsi que son architecture fonctionnelle et technique.
+Ces constats ont permis de définir les principaux besoins fonctionnels et techniques du projet. Ils justifient la mise en place d’une solution data-driven reposant sur une base de données centralisée, des tableaux de bord décisionnels, une interface de consultation orientée client et un portail back-office de validation interne. Le chapitre suivant présentera la conception globale de cette solution ainsi que son architecture fonctionnelle et technique.
