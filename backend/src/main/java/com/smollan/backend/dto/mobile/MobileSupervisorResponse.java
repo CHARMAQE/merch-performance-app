@@ -2,11 +2,13 @@ package com.smollan.backend.dto.mobile;
 
 public record MobileSupervisorResponse(
         Long supervisorId,
+        String supervisorCode,
         String fullName,
         String username,
-        String phone,
         String email,
+        String city,
         String region,
-        String role
+        String role,
+        Long assignedStoreCount
 ) {
 }

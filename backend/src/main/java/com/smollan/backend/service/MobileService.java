@@ -11,12 +11,12 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 
 import com.smollan.backend.dto.map.StoreMapDetailResponse;
 import com.smollan.backend.dto.mobile.MobileDashboardOverviewResponse;
 import com.smollan.backend.dto.mobile.MobileExecutionStoreSummaryResponse;
-import com.smollan.backend.dto.mobile.MobileIssueResponse;
 import com.smollan.backend.dto.mobile.MobileLoginRequest;
 import com.smollan.backend.dto.mobile.MobileMerchandiserExecutionResponse;
 import com.smollan.backend.dto.mobile.MobileMerchandiserStoreResponse;
@@ -53,61 +53,71 @@ public class MobileService {
     }
 
     public Optional<MobileSupervisorResponse> login(MobileLoginRequest request) {
-        if (request == null || isBlank(request.username()) || isBlank(request.password())) {
+        if (request == null || isBlank(request.email()) || isBlank(request.password())) {
             return Optional.empty();
         }
 
-        List<MobileSupervisorResponse> supervisors = jdbcTemplate.query(
+        List<SupervisorAccount> supervisors = jdbcTemplate.query(
                 """
                 SELECT
-                    supervisor_id,
-                    full_name,
-                    username,
-                    phone,
-                    email,
-                    region,
+                    sup.supervisor_id,
+                    sup.supervisor_code,
+                    sup.full_name,
+                    sup.username,
+                    sup.password_hash,
+                    sup.email,
+                    sup.city,
+                    sup.region,
                     CASE
-                        WHEN LOWER(TRIM(username)) = 'admin' THEN 'ADMIN'
-                        ELSE 'SUPERVISOR'
-                    END AS role
-                FROM supervisors
-                WHERE username = ?
-                  AND password_hash = ?
-                  AND active = TRUE
+                        WHEN LOWER(TRIM(sup.username)) = 'admin' THEN 'ADMIN'
+                        ELSE UPPER(COALESCE(NULLIF(TRIM(sup.role), ''), 'CLIENT_SUPERVISOR'))
+                    END AS role,
+                    (
+                        SELECT COUNT(*)
+                        FROM supervisor_stores ss
+                        WHERE ss.supervisor_id = sup.supervisor_id
+                          AND ss.active = TRUE
+                    ) AS assigned_store_count
+                FROM supervisors sup
+                WHERE LOWER(TRIM(sup.email)) = ?
+                  AND sup.active = TRUE
                 LIMIT 1
                 """,
-                (rs, rowNum) -> new MobileSupervisorResponse(
+                (rs, rowNum) -> new SupervisorAccount(
                         rs.getLong("supervisor_id"),
+                        rs.getString("supervisor_code"),
                         rs.getString("full_name"),
                         rs.getString("username"),
-                        rs.getString("phone"),
+                        rs.getString("password_hash"),
                         rs.getString("email"),
+                        rs.getString("city"),
                         rs.getString("region"),
-                        rs.getString("role")
+                        rs.getString("role"),
+                        rs.getLong("assigned_store_count")
                 ),
-                request.username().trim(),
-                request.password().trim()
+                request.email().trim().toLowerCase()
         );
 
-        if (!supervisors.isEmpty()) {
-            return Optional.of(supervisors.get(0));
+        if (supervisors.isEmpty()) {
+            return Optional.empty();
         }
 
-        // Demo fallback keeps the PFE app usable when seed_supervisors.sql has not been run.
-        if ("1234".equals(request.password().trim())
-                && List.of("admin", "casa_sup", "supervisor").contains(request.username().trim().toLowerCase())) {
-            return Optional.of(new MobileSupervisorResponse(
-                    0L,
-                    "Demo Supervisor",
-                    request.username().trim(),
-                    null,
-                    null,
-                    "All Regions",
-                    "ADMIN"
-            ));
+        SupervisorAccount supervisor = supervisors.get(0);
+        if (!passwordMatches(request.password().trim(), supervisor.passwordHash())) {
+            return Optional.empty();
         }
 
-        return Optional.empty();
+        return Optional.of(new MobileSupervisorResponse(
+                supervisor.supervisorId(),
+                supervisor.supervisorCode(),
+                supervisor.fullName(),
+                supervisor.username(),
+                supervisor.email(),
+                supervisor.city(),
+                supervisor.region(),
+                supervisor.role(),
+                supervisor.assignedStoreCount()
+        ));
     }
 
     public MobileDashboardOverviewResponse getSupervisorOverview(
@@ -324,90 +334,6 @@ public class MobileService {
         );
     }
 
-    public List<MobileIssueResponse> getIssues(
-            Long supervisorId,
-            String startDate,
-            String endDate,
-            String supervisor,
-            String merchandiser,
-            String region,
-            String storeFormat,
-            Integer year,
-            Integer month,
-            Integer day
-    ) {
-        CoverageFilter filter = buildCoverageFilter(
-                supervisorId, startDate, endDate, supervisor, merchandiser, region, storeFormat, year, month, day
-        );
-
-        return jdbcTemplate.query(
-                """
-                SELECT
-                    CASE
-                        WHEN """ + NON_VISITED_CONDITION + """
-                         THEN 'NON_VISITED'
-                        WHEN fc.rejection = 1 THEN 'REJECTED'
-                        WHEN fc.deviation = 1 THEN 'DEVIATION'
-                        WHEN """ + LOW_TASK_COMPLETION_CONDITION + """
-                         THEN 'LOW_TASK_COMPLETION'
-                        WHEN """ + GPS_DISTANCE_CONDITION + """
-                         THEN 'GPS_DISTANCE'
-                        ELSE 'OTHER'
-                    END AS issue_type,
-                    fc.store_code,
-                    fc.store_name,
-                    fc.username,
-                    COALESCE(fc.l1name, fc.l2name, fc.l3name) AS supervisor_name,
-                    fc.store_city,
-                    fc.store_region,
-                    fc.reason,
-                    fc.visit_date,
-                    CASE
-                        WHEN """ + NON_VISITED_CONDITION + """
-                         OR fc.deviation = 1 THEN 'HIGH'
-                        WHEN fc.rejection = 1 THEN 'MEDIUM'
-                        ELSE 'LOW'
-                    END AS severity
-                FROM fact_coverage fc
-                WHERE 1 = 1
-                """ + filter.andClause() + """
-
-                  AND (
-                    """ + NON_VISITED_CONDITION + """
-                    OR fc.rejection = 1
-                    OR fc.deviation = 1
-                    OR """ + GPS_DISTANCE_CONDITION + """
-                    OR """ + LOW_TASK_COMPLETION_CONDITION + """
-                  )
-                ORDER BY fc.visit_date DESC,
-                    CASE
-                        WHEN """ + NON_VISITED_CONDITION + """
-                         THEN 1
-                        WHEN fc.rejection = 1 THEN 2
-                        WHEN fc.deviation = 1 THEN 3
-                        WHEN """ + LOW_TASK_COMPLETION_CONDITION + """
-                         THEN 4
-                        ELSE 5
-                    END,
-                    fc.store_name
-                LIMIT 200
-                """,
-                (rs, rowNum) -> new MobileIssueResponse(
-                        rs.getString("issue_type"),
-                        rs.getString("store_code"),
-                        rs.getString("store_name"),
-                        rs.getString("username"),
-                        rs.getString("supervisor_name"),
-                        rs.getString("store_city"),
-                        rs.getString("store_region"),
-                        rs.getString("reason"),
-                        toLocalDate(rs, "visit_date"),
-                        rs.getString("severity")
-                ),
-                filter.params().toArray()
-        );
-    }
-
     public List<MobileMerchandiserStoreResponse> getMerchandiserStores(
             Long supervisorId,
             String employeeCode,
@@ -546,11 +472,7 @@ public class MobileService {
             return Optional.empty();
         }
 
-        if (supervisorId == null || isAdmin(supervisorId) || getAssignedStoreCodes(supervisorId).isEmpty()) {
-            return Optional.of(storeMapService.getStoreDetails(storeCode.trim(), null, null));
-        }
-
-        if (!isStoreAssignedToSupervisor(supervisorId, storeCode)) {
+        if (!canAccessStore(supervisorId, storeCode)) {
             return Optional.empty();
         }
 
@@ -568,9 +490,7 @@ public class MobileService {
             return Optional.empty();
         }
 
-        if (supervisorId != null && supervisorId > 0 && !isAdmin(supervisorId)
-                && !getAssignedStoreCodes(supervisorId).isEmpty()
-                && !isStoreAssignedToSupervisor(supervisorId, storeCode)) {
+        if (!canAccessStore(supervisorId, storeCode)) {
             return Optional.empty();
         }
 
@@ -827,12 +747,16 @@ public class MobileService {
             params.add(likeValue(storeFormat));
         }
 
-        if (supervisorId != null && supervisorId > 0 && !isAdmin(supervisorId)) {
+        if (supervisorId == null || supervisorId <= 0) {
+            conditions.add("1 = 0");
+        } else if (!isAdmin(supervisorId)) {
             List<String> assignedStoreCodes = getAssignedStoreCodes(supervisorId);
             if (!assignedStoreCodes.isEmpty()) {
                 String placeholders = String.join(",", assignedStoreCodes.stream().map(item -> "?").toList());
                 conditions.add("fc.store_code IN (" + placeholders + ")");
                 params.addAll(assignedStoreCodes);
+            } else {
+                conditions.add("1 = 0");
             }
         }
 
@@ -874,6 +798,7 @@ public class MobileService {
                 JOIN stores s ON s.store_id = ss.store_id
                 JOIN supervisors sup ON sup.supervisor_id = ss.supervisor_id
                 WHERE ss.supervisor_id = ?
+                  AND ss.active = TRUE
                   AND sup.active = TRUE
                 ORDER BY s.store_name, s.store_code
                 """,
@@ -891,6 +816,7 @@ public class MobileService {
                 JOIN supervisors sup ON sup.supervisor_id = ss.supervisor_id
                 WHERE ss.supervisor_id = ?
                   AND s.store_code = ?
+                  AND ss.active = TRUE
                   AND sup.active = TRUE
                 """,
                 rs -> rs.next() ? rs.getInt("assignment_count") : 0,
@@ -901,9 +827,21 @@ public class MobileService {
         return count != null && count > 0;
     }
 
+    private boolean canAccessStore(Long supervisorId, String storeCode) {
+        if (supervisorId == null || supervisorId <= 0 || isBlank(storeCode)) {
+            return false;
+        }
+
+        if (isAdmin(supervisorId)) {
+            return true;
+        }
+
+        return isStoreAssignedToSupervisor(supervisorId, storeCode);
+    }
+
     private boolean isAdmin(Long supervisorId) {
         if (supervisorId == null || supervisorId <= 0) {
-            return true;
+            return false;
         }
 
         Integer count = jdbcTemplate.query(
@@ -911,8 +849,11 @@ public class MobileService {
                 SELECT COUNT(*) AS admin_count
                 FROM supervisors
                 WHERE supervisor_id = ?
-                  AND LOWER(TRIM(username)) = 'admin'
                   AND active = TRUE
+                  AND (
+                      LOWER(TRIM(username)) = 'admin'
+                      OR UPPER(TRIM(COALESCE(role, ''))) = 'ADMIN'
+                  )
                 """,
                 rs -> rs.next() ? rs.getInt("admin_count") : 0,
                 supervisorId
@@ -927,6 +868,18 @@ public class MobileService {
         out.addAll(params);
         out.add(GPS_DISTANCE_THRESHOLD_METERS);
         return out;
+    }
+
+    private static boolean passwordMatches(String rawPassword, String passwordHash) {
+        if (isBlank(rawPassword) || isBlank(passwordHash)) {
+            return false;
+        }
+
+        try {
+            return BCrypt.checkpw(rawPassword, passwordHash);
+        } catch (IllegalArgumentException exc) {
+            return false;
+        }
     }
 
     private static LocalDate parseDate(String value) {
@@ -989,5 +942,19 @@ public class MobileService {
     }
 
     private record CoverageFilter(String andClause, List<Object> params) {
+    }
+
+    private record SupervisorAccount(
+            Long supervisorId,
+            String supervisorCode,
+            String fullName,
+            String username,
+            String passwordHash,
+            String email,
+            String city,
+            String region,
+            String role,
+            Long assignedStoreCount
+    ) {
     }
 }

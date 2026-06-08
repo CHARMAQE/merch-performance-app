@@ -31,7 +31,6 @@ export function DashboardScreen({
   const nonVisitedStores = Number(overview?.nonVisitedVisits ?? activity?.notVisitedStores ?? 0);
   const deviationStores = Number(overview?.deviationVisits ?? activity?.deviationStores ?? 0);
   const rejectedStores = Number(overview?.rejectedVisits ?? 0);
-  const problematicVisits = Number(overview?.problematicVisits ?? 0);
   const taskCompletionRate = Math.round(Number(overview?.taskCompletionRate ?? 0));
   const nonVisitedRate = Math.round(Number(overview?.nonVisitedRate ?? 0));
   const deviationRate = Math.round(Number(overview?.deviationRate ?? 0));
@@ -105,7 +104,6 @@ export function DashboardScreen({
         <MetricCard label="Non Visited" value={formatNumber(nonVisitedStores)} detail={`${nonVisitedRate}% rate`} status={rateStatus(nonVisitedRate, "badHigh")} />
         <MetricCard label="Deviations" value={formatNumber(deviationStores)} detail={`${deviationRate}% rate`} status={rateStatus(deviationRate, "badHigh")} />
         <MetricCard label="Rejected" value={formatNumber(rejectedStores)} detail={`${rejectionRate}% rate`} status={rateStatus(rejectionRate, "badHigh")} />
-        <MetricCard label="Situations to review" value={formatNumber(problematicVisits)} detail="To review" status={problematicVisits > 0 ? "critical" : "success"} />
         <MetricCard label="Task Completion" value={`${taskCompletionRate}%`} detail="Tasks done / assigned" status={rateStatus(taskCompletionRate, "goodHigh")} />
         <MetricCard label="Active Merch" value={formatNumber(activeMerchandisers)} detail="In selected period" />
       </View>

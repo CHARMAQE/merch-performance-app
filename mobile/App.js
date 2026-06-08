@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { SafeAreaView, View } from "react-native";
 import {
   getSupervisorDashboardOverview,
-  getSupervisorIssues,
   getSupervisorMerchandiserExecution,
   getSupervisorStores,
 } from "./src/api/backendApi";
@@ -11,7 +10,6 @@ import { TabButton } from "./src/components/TabButton";
 import { DEFAULT_REPORT_MONTH, REPORT_YEAR } from "./src/constants/appConstants";
 import { DashboardScreen } from "./src/screens/DashboardScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
-import { IssuesScreen } from "./src/screens/IssuesScreen";
 import { MerchandiserExecutionScreen } from "./src/screens/MerchandiserExecutionScreen";
 import { StoreDetailScreen } from "./src/screens/StoreDetailScreen";
 import { StoreMapScreen } from "./src/screens/StoreMapScreen";
@@ -28,7 +26,6 @@ export default function App() {
   const [overview, setOverview] = useState(null);
   const [merchandisers, setMerchandisers] = useState([]);
   const [stores, setStores] = useState([]);
-  const [issues, setIssues] = useState([]);
   const [selectedStore, setSelectedStore] = useState(null);
   const [selectedStoreDetail, setSelectedStoreDetail] = useState(null);
   const [storeDetailBackScreen, setStoreDetailBackScreen] = useState("map");
@@ -41,7 +38,6 @@ export default function App() {
     setOverview(null);
     setMerchandisers([]);
     setStores([]);
-    setIssues([]);
     setSelectedStore(null);
     setSelectedStoreDetail(null);
     setError("");
@@ -65,7 +61,7 @@ export default function App() {
             }),
       };
 
-      const [overviewResult, merchandisersResult, storesResult, issuesResult] = await Promise.allSettled([
+      const [overviewResult, merchandisersResult, storesResult] = await Promise.allSettled([
         getSupervisorDashboardOverview(supervisor.supervisorId, {
           ...filters,
         }),
@@ -74,9 +70,6 @@ export default function App() {
           storeFormatGroup: merchStoreFormatGroup,
         }),
         getSupervisorStores(supervisor.supervisorId, {
-          ...filters,
-        }),
-        getSupervisorIssues(supervisor.supervisorId, {
           ...filters,
         }),
       ]);
@@ -95,10 +88,6 @@ export default function App() {
         setStores(Array.isArray(storesResult.value) ? storesResult.value : []);
       }
 
-      if (issuesResult.status === "fulfilled") {
-        setIssues(Array.isArray(issuesResult.value) ? issuesResult.value : []);
-      }
-
       const messages = [];
       if (overviewResult.status === "rejected") {
         messages.push("Dashboard data failed");
@@ -108,9 +97,6 @@ export default function App() {
       }
       if (storesResult.status === "rejected") {
         messages.push("Stores failed");
-      }
-      if (issuesResult.status === "rejected") {
-        messages.push("Follow-up failed");
       }
       if (messages.length > 0) {
         setError("Unable to load data. Please check backend connection.");
@@ -211,17 +197,6 @@ export default function App() {
             storeFormatGroup={merchStoreFormatGroup}
             onStoreFormatGroupChange={handleMerchStoreFormatGroupChange}
           />
-        ) : activeScreen === "issues" ? (
-          <IssuesScreen
-            issues={issues}
-            isLoading={isLoading}
-            error={error}
-            onOpenStore={(store) => {
-              setSelectedStoreDetail(store);
-              setStoreDetailBackScreen("issues");
-              setActiveScreen("storeDetail");
-            }}
-          />
         ) : activeScreen === "storeDetail" ? (
           <StoreDetailScreen
             supervisorId={supervisor.supervisorId}
@@ -264,12 +239,6 @@ export default function App() {
           label="Stores"
           isActive={activeScreen === "map" || activeScreen === "storeDetail"}
           onPress={() => setActiveScreen("map")}
-        />
-        <TabButton
-          label="Follow-up"
-          badge={issues.length > 0 ? String(issues.length) : ""}
-          isActive={activeScreen === "issues"}
-          onPress={() => setActiveScreen("issues")}
         />
       </View>
       <StatusBar style="dark" />

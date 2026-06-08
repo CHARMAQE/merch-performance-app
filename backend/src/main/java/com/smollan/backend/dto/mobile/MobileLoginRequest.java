@@ -1,7 +1,7 @@
 package com.smollan.backend.dto.mobile;
 
 public record MobileLoginRequest(
-        String username,
+        String email,
         String password
 ) {
 }

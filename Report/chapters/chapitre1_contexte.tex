@@ -153,55 +153,7 @@ La figure suivante synthétise les principales étapes de la démarche adoptée 
 
 \begin{figure}[H]
 \centering
-
-\begin{tikzpicture}[
-    box/.style={
-        rectangle,
-        rounded corners=3pt,
-        draw=black!65,
-        fill=gray!8,
-        line width=0.4pt,
-        minimum width=3.0cm,
-        minimum height=0.9cm,
-        align=center,
-        font=\scriptsize
-    },
-    arrow/.style={
-        -{Latex[length=2mm]},
-        line width=0.5pt,
-        draw=black!65
-    },
-    title/.style={
-        font=\small\bfseries,
-        text=black
-    }
-]
-
-\node[title] (title) at (0,0) {Phases principales de réalisation du projet};
-
-% Première ligne
-\node[box] (p1) at (-5.7,-1.2) {Compréhension\\du contexte métier};
-\node[box] (p2) at (-1.9,-1.2) {Analyse des fichiers\\Data Dump et Coverage};
-\node[box] (p3) at (1.9,-1.2) {Conception du processus\\de traitement};
-\node[box] (p4) at (5.7,-1.2) {Centralisation\\des données};
-
-% Deuxième ligne
-\node[box] (p5) at (-1.9,-3.2) {Restitution\\analytique};
-\node[box] (p6) at (1.9,-3.2) {Interfaces de\\consultation};
-\node[box] (p7) at (5.7,-3.2) {Tests, ajustements\\et documentation};
-
-% Flèches
-\draw[arrow] (p1.east) -- (p2.west);
-\draw[arrow] (p2.east) -- (p3.west);
-\draw[arrow] (p3.east) -- (p4.west);
-
-\draw[arrow] (p4.south) -- ++(0,-0.55) -- ($(p5.north)+(0,0.55)$) -- (p5.north);
-
-\draw[arrow] (p5.east) -- (p6.west);
-\draw[arrow] (p6.east) -- (p7.west);
-
-\end{tikzpicture}
-
+\includegraphics[width=0.9\textwidth]{figures/architecture/Phases_principales_de_réalisation_projet.png}
 \caption{Phases principales de réalisation du projet.}
 \label{fig:phases-projet}
 \end{figure}

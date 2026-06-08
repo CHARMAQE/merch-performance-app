@@ -26,18 +26,28 @@ CREATE TABLE IF NOT EXISTS stores (
 
 CREATE TABLE IF NOT EXISTS supervisors (
     supervisor_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    supervisor_code VARCHAR(40),
     full_name VARCHAR(150) NOT NULL,
-    username VARCHAR(80) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    phone VARCHAR(40),
+    username VARCHAR(80) NOT NULL,
     email VARCHAR(120),
+    phone VARCHAR(40),
+    city VARCHAR(120),
     region VARCHAR(120),
-    active BOOLEAN NOT NULL DEFAULT TRUE
+    role VARCHAR(40) NOT NULL DEFAULT 'CLIENT_SUPERVISOR',
+    password_hash VARCHAR(255) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_supervisors_supervisor_code (supervisor_code),
+    UNIQUE KEY uq_supervisors_username (username)
 );
 
 CREATE TABLE IF NOT EXISTS supervisor_stores (
     supervisor_id BIGINT NOT NULL,
     store_id INT NOT NULL,
+    assignment_source VARCHAR(80) DEFAULT 'FAKE_CLIENT_LIST',
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
     PRIMARY KEY (supervisor_id, store_id),
     CONSTRAINT fk_supervisor_stores_supervisor
         FOREIGN KEY (supervisor_id) REFERENCES supervisors(supervisor_id)

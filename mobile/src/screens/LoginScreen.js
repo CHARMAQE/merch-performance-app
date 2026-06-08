@@ -1,48 +1,75 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, SafeAreaView, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  SafeAreaView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { loginSupervisor } from "../api/backendApi";
 import { colors } from "../constants/colors";
 import { styles } from "../styles/appStyles";
 
+const smollanLogo = require("../../assets/smollan.png");
+const unileverLogo = require("../../assets/unilever.png");
+
 export function LoginScreen({ onLogin }) {
-  const [username, setUsername] = useState("casa_sup");
+  const [email, setEmail] = useState("yassine.elamrani@unilever.test");
   const [password, setPassword] = useState("1234");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function handleLogin() {
-    if (!username.trim() || !password.trim()) {
-      setError("Please enter username and password.");
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter email and password.");
       return;
     }
+
+    const loginEmail = email.trim().toLowerCase();
+    const loginPassword = password;
 
     try {
       setIsLoading(true);
       setError("");
-      const supervisor = await loginSupervisor(username.trim(), password.trim());
+      const supervisor = await loginSupervisor(loginEmail, loginPassword);
       onLogin(supervisor);
     } catch (loginError) {
-      setError("Invalid login or backend is unreachable.");
+      setError(getLoginErrorMessage(loginError));
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.loginScreen}>
       <View style={styles.loginPanel}>
-        <Text style={styles.eyebrow}>Merch Performance</Text>
-        <Text style={styles.title}>Supervisor login</Text>
+        <View style={styles.loginLogoRow}>
+          <View style={styles.loginLogoCard}>
+            <Image source={smollanLogo} style={styles.smollanLogo} resizeMode="contain" />
+          </View>
+          <View style={styles.loginLogoCard}>
+            <Image source={unileverLogo} style={styles.unileverLogo} resizeMode="contain" />
+          </View>
+        </View>
+
+        <Text style={styles.eyebrow}>Assigned store access</Text>
+        <Text style={styles.title}>Mobile supervision</Text>
         <Text style={styles.bodyText}>
-          Sign in to review your assigned stores and store information.
+          Sign in with your Unilever email to monitor execution, coverage,
+          merchandisers, and assigned stores.
         </Text>
 
-        <Text style={styles.label}>Username</Text>
+        <Text style={styles.label}>Email</Text>
         <TextInput
-          value={username}
-          onChangeText={setUsername}
-          placeholder="Enter username"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="name@unilever.test"
           autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          textContentType="emailAddress"
           style={styles.input}
         />
 
@@ -71,4 +98,28 @@ export function LoginScreen({ onLogin }) {
       </View>
     </SafeAreaView>
   );
+}
+
+function getLoginErrorMessage(loginError) {
+  if (loginError?.code === "TIMEOUT" || loginError?.code === "NETWORK") {
+    return "Backend unreachable. Check Wi-Fi, PC IP, and that Spring Boot is running.";
+  }
+
+  if (loginError?.status === 401) {
+    return "401 invalid credentials. Check the email and password.";
+  }
+
+  if (loginError?.status === 400) {
+    return "400 bad request. The login payload may not match the backend contract.";
+  }
+
+  if (loginError?.status >= 500) {
+    return "Server error. Check the Spring Boot console.";
+  }
+
+  if (loginError?.status) {
+    return `Login failed with HTTP ${loginError.status}. Check Expo logs.`;
+  }
+
+  return "Login failed. Check Expo logs for details.";
 }

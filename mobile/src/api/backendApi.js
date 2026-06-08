@@ -1,16 +1,30 @@
+// Expo Go on a physical phone must call the Windows PC LAN IP.
+// localhost works only for web/emulator contexts where the app runs on the same machine.
+const DEFAULT_MOBILE_API_BASE_URL = "http://192.168.1.171:9000";
 const LAN_API_BASE =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.240.1:9000";
+  process.env.EXPO_PUBLIC_API_BASE_URL || DEFAULT_MOBILE_API_BASE_URL;
 const REQUEST_TIMEOUT_MS = 30000;
 
 export const API_BASE = LAN_API_BASE;
 
+class ApiError extends Error {
+  constructor(message, details = {}) {
+    super(message);
+    this.name = "ApiError";
+    this.status = details.status;
+    this.body = details.body;
+    this.code = details.code;
+  }
+}
+
 async function request(path, options = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const url = `${API_BASE}${path}`;
 
   let response;
   try {
-    response = await fetch(`${API_BASE}${path}`, {
+    response = await fetch(url, {
       method: options.method || "GET",
       headers: {
         Accept: "application/json",
@@ -21,26 +35,43 @@ async function request(path, options = {}) {
       signal: controller.signal,
     });
   } catch (error) {
+    const code = error.name === "AbortError" ? "TIMEOUT" : "NETWORK";
+
     if (error.name === "AbortError") {
-      throw new Error("Request timed out. Check backend and Wi-Fi.");
+      throw new ApiError("Request timed out. Check backend and Wi-Fi.", {
+        code,
+      });
     }
 
-    throw error;
+    throw new ApiError("Backend unreachable. Check backend and Wi-Fi.", {
+      code,
+    });
   } finally {
     clearTimeout(timeoutId);
   }
 
+  const responseText = await response.text();
+
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
+    throw new ApiError(`Request failed with status ${response.status}`, {
+      status: response.status,
+      body: responseText,
+    });
   }
 
-  return response.json();
+  if (!responseText) {
+    return null;
+  }
+
+  return JSON.parse(responseText);
 }
 
-export function loginSupervisor(username, password) {
+export function loginSupervisor(email, password) {
+  const payload = { email, password };
+
   return request("/api/mobile/login", {
     method: "POST",
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -103,16 +134,6 @@ export function getMerchandiserStores(employeeCode, filters = {}) {
   return request(
     `/api/mobile/merchandisers/${encodeURIComponent(employeeCode)}/stores?${params.toString()}`
   );
-}
-
-export function getSupervisorIssues(supervisorId, filters = {}) {
-  const params = buildSupervisorFilterParams(supervisorId, filters);
-  return request(`/api/mobile/issues?${params.toString()}`);
-}
-
-export function getIssues(filters = {}) {
-  const params = buildSupervisorFilterParams(filters.supervisorId, filters);
-  return request(`/api/mobile/issues?${params.toString()}`);
 }
 
 export function getStores(filters = {}) {
