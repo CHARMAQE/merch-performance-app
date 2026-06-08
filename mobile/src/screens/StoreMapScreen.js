@@ -329,10 +329,12 @@ export function StoreMapScreen({
 
   function focusUserLocation() {
     if (!userLocation) {
+      setLocationError("Location centering will be available after permission setup.");
       return;
     }
 
     Keyboard.dismiss();
+    setLocationError("");
     mapRef.current?.animateToRegion(
       {
         ...userLocation,
@@ -557,8 +559,15 @@ export function StoreMapScreen({
         ]}
       >
         {userLocation ? (
-          <Pressable style={styles.locationButton} onPress={focusUserLocation}>
-            <Text style={styles.locationButtonText}>O</Text>
+          <Pressable
+            style={styles.locationButton}
+            onPress={focusUserLocation}
+            accessibilityRole="button"
+            accessibilityLabel="Center on my location"
+            accessibilityHint="Moves the map to your current location"
+            hitSlop={8}
+          >
+            <Text style={styles.locationButtonText}>{"\u2316"}</Text>
           </Pressable>
         ) : null}
         {locationError ? (
