@@ -4,7 +4,7 @@ import { getStoreDetail } from "../api/backendApi";
 import { REPORT_YEAR } from "../constants/appConstants";
 import { colors } from "../constants/colors";
 import { styles } from "../styles/appStyles";
-import { formatDate, formatNumber, formatPercentage } from "../utils/formatters";
+import { formatDate } from "../utils/formatters";
 
 export function StoreDetailScreen({
   supervisorId,
@@ -59,89 +59,102 @@ export function StoreDetailScreen({
     };
   }, [endDate, selectedDay, selectedMonth, startDate, storeCode, supervisorId]);
 
-  const status = getStatus(details);
-  const startDistance = Number(details?.startDistanceMeters);
-  const endDistance = Number(details?.endDistanceMeters);
-  const hasGpsFlag = startDistance > 250 || endDistance > 250;
-
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
-      <Pressable style={styles.merchTopBackNav} onPress={onBack}>
-        <Text style={styles.merchTopBackIcon}>{"<"}</Text>
-        <Text style={styles.merchTopBackText}>Stores</Text>
-      </Pressable>
+      <View style={styles.compactNavbar}>
+        <Pressable style={styles.compactBackButton} onPress={onBack}>
+          <Text style={styles.compactBackIcon}>{"‹"}</Text>
+        </Pressable>
+        <Text style={styles.compactNavTitle}>Stores</Text>
+        <View style={styles.compactNavSpacer} />
+      </View>
 
-      <View style={styles.panel}>
-        <View style={styles.panelHeaderRow}>
-          <View style={styles.headerTitleBlock}>
-            <Text style={styles.eyebrow}>STORE DETAILS</Text>
-            <Text style={styles.title}>{details?.storeName || store?.storeName || "Store"}</Text>
-            <Text style={styles.bodyText}>{details?.storeCode || storeCode}</Text>
-          </View>
-          <View style={[styles.statusBadge, status.style]}>
-            <Text style={styles.statusBadgeText}>{status.label}</Text>
+      <View style={styles.storeDetailHero}>
+        <Text style={styles.storeDetailHeroLabel}>STORE DETAILS</Text>
+        <Text style={styles.storeDetailHeroTitle} numberOfLines={2}>
+          {details?.storeName || store?.storeName || "Store"}
+        </Text>
+        <Text style={styles.storeDetailHeroCode}>
+          Store code: {displayValue(details?.storeCode || storeCode)}
+        </Text>
+        <View style={styles.storeDetailHeroChipRow}>
+          <View style={styles.storeDetailHeroChip}>
+            <Text style={styles.storeDetailHeroChipText}>
+              {displayValue(details?.storeFormat || store?.storeFormat)}
+            </Text>
           </View>
         </View>
+        <Text style={styles.storeDetailHeroMeta} numberOfLines={2}>
+          {[
+            details?.city || details?.storeCity || store?.city || store?.storeCity,
+            details?.region || details?.storeRegion || store?.region || store?.storeRegion,
+          ]
+            .filter(isPresent)
+            .join(" - ") || "--"}
+        </Text>
+      </View>
 
-        {isLoading ? (
-          <View style={styles.inlineState}>
-            <ActivityIndicator color={colors.navy} />
-            <Text style={styles.bodyText}>Loading store details...</Text>
-          </View>
-        ) : null}
-
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-        <View style={styles.storeMetricGrid}>
-          <DetailMetric label="City" value={details?.city || details?.storeCity || "Not available"} />
-          <DetailMetric label="Region" value={details?.region || details?.storeRegion || "Not available"} />
-          <DetailMetric label="Format" value={details?.storeFormat || "Not available"} />
-          <DetailMetric label="Visit date" value={formatDate(details?.visitDate)} />
-          <DetailMetric label="Latest visit" value={formatDate(details?.latestVisitDate || details?.visitDate)} />
-          <DetailMetric label="Merchandiser" value={details?.username || "Not available"} />
-          <DetailMetric label="Employee code" value={details?.employeeCode || "Not available"} />
-          <DetailMetric label="Supervisor" value={details?.supervisorName || "Not available"} />
-          <DetailMetric label="Task assigned" value={formatNumber(details?.taskAssigned)} />
-          <DetailMetric label="Task done" value={formatNumber(details?.taskDone)} />
-          <DetailMetric label="Task completion" value={formatPercentage(details?.taskPer)} />
-          <DetailMetric
-            label="GPS distance"
-            value={[
-              formatDistance("Start", details?.startDistanceMeters),
-              formatDistance("End", details?.endDistanceMeters),
-            ].join(" / ")}
-            warning={hasGpsFlag}
-          />
-          <DetailMetric label="User attendance" value={details?.userAttendance || "Not available"} />
-          <DetailMetric label="Superior attendance" value={details?.superiorAttendance || "Not available"} />
-          <DetailMetric label="Final attendance" value={details?.finalUserAttendance || "Not available"} />
-          <DetailMetric label="Reason" value={details?.reason || "Not available"} />
+      {isLoading ? (
+        <View style={styles.inlineState}>
+          <ActivityIndicator color={colors.navy} />
+          <Text style={styles.bodyText}>Loading store details...</Text>
         </View>
+      ) : null}
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      <View style={styles.storeDetailInfoGrid}>
+        <DetailMetric label="Visit date" value={formatSafeDate(details?.visitDate)} />
+        <DetailMetric
+          label="Latest visit"
+          value={formatSafeDate(details?.latestVisitDate || details?.visitDate)}
+        />
+        <DetailMetric
+          label="Merchandiser"
+          value={displayValue(details?.merchandiserName || details?.username)}
+        />
+        <DetailMetric label="Supervisor" value={displayValue(details?.supervisorName)} />
+        <DetailMetric
+          label="City"
+          value={displayValue(details?.city || details?.storeCity || store?.city || store?.storeCity)}
+        />
+        <DetailMetric
+          label="Region"
+          value={displayValue(details?.region || details?.storeRegion || store?.region || store?.storeRegion)}
+        />
+        <DetailMetric label="Format" value={displayValue(details?.storeFormat || store?.storeFormat)} />
       </View>
     </ScrollView>
   );
 }
 
-function DetailMetric({ label, value, warning }) {
+function DetailMetric({ label, value }) {
   return (
-    <View style={[styles.storeMetric, warning ? styles.storeMetricWarning : null]}>
-      <Text style={styles.storeMetricLabel}>{label}</Text>
-      <Text style={styles.storeMetricValue}>{value}</Text>
+    <View style={styles.storeDetailInfoCard}>
+      <Text style={styles.storeDetailInfoLabel}>{label}</Text>
+      <Text style={styles.storeDetailInfoValue} numberOfLines={2}>
+        {value}
+      </Text>
     </View>
   );
 }
 
-function getStatus(store) {
-  if (store?.rejection) return { label: "Rejected", style: styles.statusBadgeRejected };
-  if (store?.deviation) return { label: "Deviation", style: styles.statusBadgeDeviation };
-  if (store?.notVisited) return { label: "Non Visited", style: styles.statusBadgeNonVisited };
-  return { label: "Covered", style: styles.statusBadgeCovered };
-}
-
-function formatDistance(label, value) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return `${label}: Not available`;
+function displayValue(value) {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return "--";
   }
 
-  return `${label}: ${Math.round(Number(value))}m`;
+  return String(value);
+}
+
+function formatSafeDate(value) {
+  if (!value) {
+    return "--";
+  }
+
+  return formatDate(value);
+}
+
+function isPresent(value) {
+  return value !== null && value !== undefined && String(value).trim() !== "";
 }

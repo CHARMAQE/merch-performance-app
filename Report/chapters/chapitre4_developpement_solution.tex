@@ -2,234 +2,170 @@
 
 \section{Introduction}
 
-Après avoir présenté la conception globale de la solution, ce chapitre décrit le développement des principales composantes retenues dans le cadre du projet. Il ne s’agit pas uniquement de présenter un pipeline de traitement, mais d’expliquer la mise en place progressive d’une solution complète permettant de structurer les données, de les centraliser, d’appliquer certaines règles de validation et de les rendre accessibles à travers des interfaces de restitution.
+Après avoir présenté la conception globale de la solution, ce chapitre décrit la mise en œuvre des principales composantes développées dans le cadre du projet. Il présente le pipeline Data Engineering, la structuration de la base MySQL, le moteur de validation, la couche Business Intelligence, le backend Spring Boot ainsi que les interfaces applicatives.
 
-Le développement de la solution repose d’abord sur un pipeline Data Engineering permettant de transformer les fichiers opérationnels \textit{Data Dump} et \textit{Coverage} en données structurées et exploitables. Ces deux fichiers constituent les principales sources utilisées dans le projet : le premier apporte les réponses détaillées issues des visites terrain, tandis que le second fournit une vision opérationnelle des visites planifiées, réalisées, rejetées, déviées ou non effectuées.
+La solution repose sur l’exploitation des fichiers \textit{Data Dump} et \textit{Coverage}, qui sont transformés en données structurées et centralisées dans la base \dbtable{unilever\_db}. Ces données alimentent ensuite les règles de validation, les tableaux de bord Power BI et les services applicatifs consommés par l’application mobile et le portail back-office.
 
-À partir de ces données, la solution construit progressivement une base MySQL organisée autour de tables de référence, de tables opérationnelles, de tables dynamiques par tâche et d’une table normalisée \textit{survey\_responses}. Cette structuration permet ensuite d’alimenter les analyses, les tableaux de bord, les règles de validation et les interfaces applicatives.
-
-Ce chapitre présente également la mise en place des règles de validation métier, notamment la distinction entre les contrôles appliqués aux formats MT et GT. Enfin, il introduit la couche applicative développée autour de services backend Spring Boot, d’une interface mobile de consultation client et d’un portail back-office interne.
+L’objectif de ce chapitre est donc de présenter la mise en place technique de la solution adoptée. Les résultats obtenus, les tests réalisés et l’interprétation des captures seront détaillés dans le chapitre suivant.
 
 \section{Mise en place du pipeline Data Engineering}
 
-La figure suivante présente une vue simplifiée du flux général du pipeline Data Engineering mis en place dans le cadre du projet. Ce flux met en évidence les principales étapes du traitement, depuis l’acquisition des fichiers Excel jusqu’au chargement des données structurées dans MySQL. Il montre également le rôle de Prefect dans l’orchestration du pipeline, ainsi que la logique progressive de transformation des données à travers les couches Bronze, Silver et Gold.
+La figure suivante présente une vue simplifiée du pipeline Data Engineering mis en place dans le cadre du projet. Elle met en évidence les principales étapes du traitement, depuis l’acquisition des fichiers Excel jusqu’au chargement des données structurées dans MySQL, tout en montrant le rôle de Prefect dans l’orchestration.
 
 \begin{figure}[H]
-    \centering
-    \includegraphics[width=1\textwidth]{figures/etl/ETL.png}
-    \caption{Flux général du pipeline Data Engineering}
-    \label{fig:flux_etl}
+\centering
+\includegraphics[width=1\textwidth]{figures/etl/ETL.png}
+\caption{Flux général du pipeline Data Engineering}
+\label{fig:flux_etl}
 \end{figure}
 
-Le pipeline commence par les fichiers sources \textit{Data Dump} et \textit{Coverage}, qui peuvent être fournis à partir d’un chemin local ou récupérés via l’export du portail. Les données sont ensuite lues et préparées à l’aide de scripts Python, puis structurées progressivement. La couche Bronze correspond à l’ingestion initiale des fichiers, la couche Silver regroupe les opérations de nettoyage et d’harmonisation, tandis que la couche Gold prépare les tables prêtes à l’exploitation. Les résultats sont enfin chargés dans la base MySQL afin d’alimenter les règles de validation, les jeux de données BI et les services backend.
+Le pipeline part des fichiers sources \textit{Data Dump} et \textit{Coverage}. Les données sont ensuite lues, nettoyées, harmonisées et transformées à l’aide de scripts Python, selon une logique progressive inspirée des couches Bronze, Silver et Gold. Les résultats sont finalement chargés dans MySQL afin d’alimenter les règles de validation, les tableaux de bord et les services backend.
 
 \subsection{Ingestion des fichiers Excel}
 
-L’ingestion constitue la première étape du pipeline Data Engineering. Elle consiste à récupérer les fichiers opérationnels nécessaires au traitement, principalement le fichier \textit{Data Dump} et le fichier \textit{Coverage}. Ces deux fichiers représentent les sources de base du projet : le \textit{Data Dump} contient les réponses détaillées issues des visites terrain, tandis que le \textit{Coverage} apporte une vision opérationnelle des visites planifiées, réalisées, rejetées, déviées ou non effectuées.
+L’ingestion constitue la première étape du pipeline Data Engineering. Elle consiste à récupérer les deux fichiers opérationnels nécessaires au traitement : le \textit{Data Dump}, qui contient les réponses détaillées issues des visites terrain, et le \textit{Coverage}, qui fournit une vision opérationnelle des visites planifiées, réalisées, rejetées, déviées ou non effectuées.
 
-Afin de rendre le traitement flexible, deux modes d’entrée ont été prévus. Le premier mode repose sur l’utilisation de fichiers Excel déjà disponibles localement. Dans ce cas, l’utilisateur peut lancer le traitement en indiquant directement le chemin du fichier \textit{Data Dump} et du fichier \textit{Coverage}. Ce mode est utile lorsque les exports ont déjà été téléchargés depuis le portail et doivent simplement être retraités par le pipeline.
+Deux modes d’entrée ont été prévus afin de rendre le traitement flexible. Le premier repose sur l’utilisation de fichiers Excel disponibles localement, tandis que le second s’appuie sur l’automatisation de l’export depuis le portail Smollan à l’aide de Playwright \cite{playwright-doc}. Cette double possibilité permet de traiter aussi bien des fichiers déjà téléchargés que des exports récupérés directement depuis le portail.
 
-Le second mode repose sur l’automatisation de l’export depuis le portail Smollan. Cette approche utilise Playwright afin d’automatiser certaines actions réalisées habituellement dans un navigateur, telles que l’accès au portail, l’application des paramètres nécessaires et le téléchargement des fichiers Excel. Ce mode permet de réduire les manipulations manuelles répétitives, tout en conservant les fichiers exportés comme point d’entrée du pipeline.
+Le traitement des fichiers repose ensuite sur Python, pandas et openpyxl, utilisés pour lire, nettoyer et transformer les données tabulaires issues des exports opérationnels \cite{python-doc,pandas-doc,openpyxl-doc}.
 
 \subsubsection{Lancement du pipeline}
 
-Le pipeline est lancé depuis le terminal à partir de l’environnement virtuel du projet. Cette étape permet d’exécuter le module principal \textit{main.py}, situé dans le dossier \textit{data-engineering}. Le lancement de cette commande ouvre ensuite l’interface de sélection, à partir de laquelle l’utilisateur peut choisir les fichiers à traiter et le mode d’entrée souhaité.
+Le pipeline est lancé depuis le terminal à partir de l’environnement virtuel du projet. Cette commande permet d’exécuter le module principal \textit{main.py}, situé dans le dossier \textit{data-engineering}, puis d’ouvrir l’interface de sélection des fichiers.
 
 \begin{figure}[H]
-    \centering
-    \includegraphics[width=0.82\textwidth]{figures/etl/commande_lancement_pipeline.png}
-    \caption{Commande de lancement du pipeline ETL}
-    \label{fig:commande_lancement_pipeline}
+\centering
+\includegraphics[width=0.82\textwidth]{figures/etl/commande_lancement_pipeline.png}
+\caption{Commande de lancement du pipeline ETL}
+\label{fig:commande_lancement_pipeline}
 \end{figure}
 
-La figure \ref{fig:commande_lancement_pipeline} présente la commande utilisée pour démarrer le pipeline depuis le répertoire du projet. Cette commande constitue le point d’entrée de l’exécution avant la sélection des fichiers \textit{Data Dump} et \textit{Coverage}.
+La figure \ref{fig:commande_lancement_pipeline} présente la commande utilisée comme point d’entrée du pipeline avant la sélection des fichiers \textit{Data Dump} et \textit{Coverage}.
 
 \subsubsection{Interface de sélection des fichiers}
 
-Après le lancement de la commande, une interface graphique permet de configurer l’exécution du pipeline. Cette interface distingue les fichiers journaliers à traiter, à savoir le \textit{Data Dump} et le \textit{Coverage}. Elle permet également de choisir la source des données : extraction depuis le portail Smollan ou chargement de fichiers Excel présents localement sur la machine.
+Après le lancement de la commande, une interface graphique permet de configurer l’exécution du pipeline. Elle permet de sélectionner les fichiers \textit{Data Dump} et \textit{Coverage}, puis de choisir le mode d’entrée : extraction depuis le portail Smollan ou chargement de fichiers Excel disponibles localement.
 
 \begin{figure}[H]
-    \centering
-    \includegraphics[width=0.82\textwidth]{figures/etl/etl_launcher_interface.png}
-    \caption{Interface de sélection des fichiers du pipeline ETL}
-    \label{fig:etl_launcher_interface}
+\centering
+\includegraphics[width=0.7\textwidth]{figures/etl/etl_launcher_interface.png}
+\caption{Interface de sélection des fichiers du pipeline ETL}
+\label{fig:etl_launcher_interface}
 \end{figure}
 
-La figure \ref{fig:etl_launcher_interface} montre les principales options disponibles au lancement. Le mode portail permet d’extraire les fichiers sélectionnés avant leur chargement dans MySQL, tandis que le mode local permet de sélectionner directement les fichiers Excel depuis la machine. L’interface propose également l’exécution des règles de validation après le chargement du \textit{Data Dump}, ce qui permet d’intégrer les contrôles métier dans le flux de traitement.
+La figure \ref{fig:etl_launcher_interface} montre que l’interface regroupe les principales options nécessaires au lancement du traitement. Elle permet également d’intégrer l’exécution des règles de validation après le chargement du \textit{Data Dump}.
 
 \subsubsection{Configuration de l’environnement}
 
-La configuration du pipeline repose sur un fichier \textit{.env}. Ce fichier permet de centraliser les paramètres nécessaires à la connexion à la base MySQL, à l’export depuis le portail Smollan et à l’organisation des répertoires utilisés par le pipeline. Les informations sensibles, notamment les identifiants et les mots de passe, ne sont pas affichées dans le rapport et doivent rester anonymisées.
+La configuration du pipeline repose sur un fichier \textit{.env}. Ce fichier regroupe les paramètres nécessaires à la connexion MySQL, à l’accès au portail Smollan et à l’organisation des répertoires utilisés par le pipeline. Les informations sensibles, comme les identifiants et les mots de passe, sont anonymisées dans le rapport.
 
 \begin{figure}[H]
-    \centering
-    \includegraphics[width=0.62\textwidth]{figures/etl/config_env_pipeline.png}
-    \caption{Exemple anonymisé de configuration de l’environnement}
-    \label{fig:config_env_pipeline}
+\centering
+\includegraphics[width=0.62\textwidth]{figures/etl/config_env_pipeline.png}
+\caption{Exemple anonymisé de configuration de l’environnement}
+\label{fig:config_env_pipeline}
 \end{figure}
 
-La figure \ref{fig:config_env_pipeline} montre les principaux paramètres utilisés par le pipeline. Les variables liées à MySQL permettent d’identifier la base \dbtable{unilever\_db}. Les variables liées au portail définissent l’URL, l’entité concernée, les rapports à extraire et les options d’exécution de Playwright. Enfin, les chemins de téléchargement, de sauvegarde et de logs permettent d’organiser les fichiers générés ou utilisés pendant le traitement.
+La figure \ref{fig:config_env_pipeline} présente les principaux paramètres utilisés : informations de connexion à la base \dbtable{unilever\_db}, paramètres d’accès au portail, rapports à extraire et chemins de stockage des fichiers et des logs.
 
 \subsubsection{Orchestration et suivi d’exécution avec Prefect}
 
-L’exécution du pipeline est orchestrée à l’aide de Prefect afin de mieux structurer les différentes étapes du traitement et de suivre leur état d’exécution. Dans le cadre du projet, Prefect ne sert pas uniquement à lancer le pipeline, mais à organiser son déroulement autour de phases fonctionnelles clairement identifiables : les contrôles préalables, l’acquisition des fichiers, le traitement du \textit{Data Dump}, l’exécution des règles de validation, le traitement du \textit{Coverage} et la synthèse finale de l’exécution.
+L’exécution du pipeline est orchestrée à l’aide de Prefect afin de structurer les différentes étapes du traitement et de faciliter leur suivi \cite{prefect-doc}. Dans la solution, Prefect permet de regrouper les traitements dans un flux principal, tout en séparant les grandes phases fonctionnelles du pipeline.
 
-Avant le lancement d’un traitement supervisé, le serveur Prefect doit être démarré localement. Cette étape permet d’activer l’API locale utilisée par le pipeline et de rendre disponible l’interface de suivi des exécutions. Lorsque le serveur n’est pas actif, le pipeline ne peut pas communiquer avec l’API de Prefect, ce qui empêche le suivi correct du run.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.75\textwidth]{figures/etl/commande_prefect_server.png}
-\caption{Démarrage du serveur Prefect}
-\label{fig:commande_prefect_server}
-\end{figure}
-
-La figure \ref{fig:commande_prefect_server} présente la commande utilisée pour démarrer le serveur Prefect. Une fois le serveur lancé, Prefect met à disposition une API locale ainsi qu’un tableau de bord permettant de suivre les exécutions du pipeline, de consulter les runs et d’identifier l’état des différentes étapes.
-
-La structure retenue repose sur un flux principal intitulé \textit{Merch Performance Daily ETL Orchestration}. Ce flux principal est organisé en sous-flux fonctionnels afin de séparer les responsabilités du pipeline sans afficher toutes les opérations internes comme des tâches indépendantes. Les opérations de bas niveau, telles que les transformations de \textit{DataFrames}, les insertions SQL, les boucles d’idempotence ou les requêtes propres aux règles de validation, restent encapsulées dans des fonctions Python internes.
+La structure retenue repose sur un flux principal intitulé \textit{Merch Performance Daily ETL Orchestration}. Ce flux est organisé en sous-flux afin de distinguer les principales étapes : vérifications préalables, acquisition des fichiers, traitement du \textit{Data Dump}, exécution des règles de validation, traitement du \textit{Coverage} et synthèse finale.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{figures/etl/prefect_runs_overview.png}
-\caption{Vue des runs supervisés dans Prefect}
-\label{fig:prefect_runs_overview}
-\end{figure}
-
-La figure \ref{fig:prefect_runs_overview} montre les principaux runs enregistrés dans Prefect. On y distingue le flux principal ainsi que les sous-flux associés aux grandes phases du traitement : contrôles préalables, acquisition et traçabilité des fichiers, traitement du \textit{Data Dump}, traitement des validations et traitement du \textit{Coverage}. Cette organisation rend le suivi plus lisible et permet d’identifier rapidement la phase concernée en cas d’erreur.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\textwidth]{figures/etl/prefect_parent_flow.png}
+\includegraphics[width=0.97\textwidth]{figures/etl/prefect_parent_flow.png}
 \caption{Vue globale de l’orchestration du pipeline dans Prefect}
 \label{fig:prefect_parent_flow}
 \end{figure}
 
-La figure \ref{fig:prefect_parent_flow} illustre la relation entre le flux principal et les sous-flux fonctionnels. Le pipeline commence par les vérifications préalables et l’acquisition des fichiers, puis enchaîne avec le traitement du \textit{Data Dump}, l’exécution des règles de validation, le traitement du \textit{Coverage} et la synthèse finale. Cette structuration permet de conserver un équilibre entre lisibilité dans l’interface Prefect et niveau de détail nécessaire au suivi technique du pipeline.
+La figure \ref{fig:prefect_parent_flow} illustre la relation entre le flux principal et les sous-flux fonctionnels. Cette organisation permet de conserver une lecture claire du pipeline, sans afficher toutes les opérations internes comme des tâches indépendantes. Les opérations de bas niveau, telles que les transformations de données, les insertions SQL ou les requêtes propres aux règles de validation, restent encapsulées dans des fonctions Python internes.
 
-Ainsi, Prefect apporte une meilleure traçabilité par rapport à une exécution classique d’un script unique. Il permet de suivre les temps d’exécution, de distinguer les étapes fonctionnelles du pipeline et de faciliter l’analyse des erreurs éventuelles.
+Ainsi, Prefect apporte une meilleure structuration par rapport à l’exécution d’un script unique. Les preuves d’exécution du pipeline, les runs terminés et les journaux détaillés seront présentés dans le chapitre consacré aux tests et aux résultats.
 
 \subsection{Traitement du fichier Data Dump}
 
-Le fichier \textit{Data Dump} constitue la source principale des réponses terrain. Il contient les informations issues des visites réalisées dans l’application Smart 3, notamment les données liées aux merchandisers, aux magasins, aux produits, aux tâches, aux questions et aux réponses saisies. Son traitement consiste à transformer ces lignes brutes en tables structurées dans MySQL.
+Le fichier \textit{Data Dump} constitue la source principale des réponses terrain. Il contient les informations issues des visites réalisées dans l’application Smart 3, notamment les données liées aux merchandisers, aux magasins, aux produits, aux tâches, aux questions et aux réponses saisies.
 
-Afin d’illustrer cette transformation, deux exemples représentatifs sont retenus : les réponses OSA et les données SOS. Ces deux cas montrent que le pipeline n’applique pas une transformation unique à toutes les tâches, mais adapte la structure SQL selon la logique métier de chaque type de donnée.
+Le traitement de ce fichier consiste à transformer les lignes brutes en tables structurées dans MySQL. Deux exemples représentatifs sont retenus pour illustrer cette logique : les réponses OSA et les données SOS. Ces cas montrent que le pipeline adapte la structure SQL selon la nature métier de chaque tâche.
 
 \begin{figure}[H]
-    \centering
-    \includegraphics[width=0.90\textwidth]{figures/etl/data_dump_to_sql_transformation.png}
-    \caption{Transformation du Data Dump vers les tables SQL : exemples OSA et SOS}
-    \label{fig:data_dump_to_sql_transformation}
+\centering
+\includegraphics[width=0.90\textwidth]{figures/etl/data_dump_to_sql_transformation.png}
+\caption{Transformation du Data Dump vers les tables SQL : exemples OSA et SOS}
+\label{fig:data_dump_to_sql_transformation}
 \end{figure}
 
 \subsubsection{Principe général de transformation}
 
-Le traitement commence par la lecture des lignes du fichier \textit{Data Dump}. Chaque ligne correspond à une réponse terrain associée à une tâche, un titre, une question et une réponse. Le pipeline identifie ensuite la tâche métier concernée, rattache la ligne à la visite correspondante et, lorsque cela est possible, l’associe également au produit concerné.
-
-Cette étape permet de passer d’une logique de fichier Excel, orientée lignes de réponses, vers une logique de tables SQL structurées. Les champs de liaison utilisés pour rattacher les réponses aux visites reposent principalement sur la date, le code merchandiser et le code magasin. Le code produit permet ensuite d’enrichir certaines tâches, notamment les tâches liées à la disponibilité produit.
-
-\subsubsection{Étude de cas OSA : transformation en colonnes dynamiques}
-
-Le premier cas concerne les réponses OSA. Dans le fichier \textit{Data Dump}, ces réponses sont stockées sous forme de lignes question/réponse associées à une visite et à un produit. Le traitement appliqué vise à transformer ces lignes brutes en une structure SQL plus adaptée à l’analyse de la disponibilité produit.
+Le traitement commence par la lecture des lignes du \textit{Data Dump}. Chaque ligne correspond à une réponse terrain associée à une tâche, une question et une valeur saisie. Le pipeline identifie la tâche concernée, rattache la réponse à la visite correspondante et, lorsque cela est possible, l’associe au produit concerné.
+\newpage
+Cette étape permet de passer d’une logique Excel orientée lignes de réponses vers une logique SQL structurée. Les champs de liaison reposent principalement sur la date, le code merchandiser et le code magasin, tandis que le code produit permet d’enrichir certaines tâches liées à la disponibilité produit.
 
 \begin{table}[H]
 \centering
-
-\begin{tcolorbox}[technicalbox,breakable=false,title={Étude de cas OSA --- Pivot dynamique},halign title=center]
+\caption{Comparaison des transformations appliquées aux cas OSA et SOS}
+\label{tab:comparison_osa_sos}
+\renewcommand{\arraystretch}{1.25}
 \small
-\renewcommand{\arraystretch}{1.35}
-\begin{tabular}{p{0.23\textwidth}|p{0.67\textwidth}}
-
-\textbf{Entrée Data Dump} &
-Ligne question/réponse liée à une visite, à un produit et à une réponse de disponibilité du SKU, généralement sous la forme \textit{Oui} ou \textit{Non}. \\
+\begin{tabular}{
+|p{3.2cm}
+|p{5.2cm}
+|p{5.2cm}|
+}
 \hline
-
-\textbf{Règle appliquée} &
-Les lignes dont le titre contient \textit{OSA}, \textit{COC}, \textit{MH} ou \textit{PACK} sont orientées vers la table \dbtable{task\_osa\_pack\_coc\_mh}. \\
+\textbf{Aspect} & \textbf{Cas OSA} & \textbf{Cas SOS} \\
 \hline
-
-\textbf{Transformation} &
-Les réponses sont regroupées par \dbtable{visit\_id} et \dbtable{product\_id}. Chaque question devient une colonne SQL dynamique, tandis que la réponse devient la valeur stockée dans cette colonne. \\
+Nature des données
+& Disponibilité produit par visite et SKU.
+& Part de linéaire par visite et item. \\
 \hline
-
-\textbf{Sortie SQL} &
-La table cible contient une ligne par visite et par produit, avec des colonnes fixes comme \dbtable{visit\_id}, \dbtable{product\_id}, \dbtable{title} et \dbtable{response\_date}, ainsi que des colonnes dynamiques générées à partir des questions. \\
+Logique de transformation
+& Pivot : les questions deviennent des colonnes.
+& Structure verticale : une mesure par ligne. \\
 \hline
-
-\textbf{Utilité} &
-Cette structure facilite l’analyse de la disponibilité des produits et prépare les données pour les indicateurs OSA et les règles de contrôle métier.
-
+Table cible
+& \dbtable{task\_osa\_pack\_coc\_mh}
+& \dbtable{task\_sos} \\
+\hline
+Granularité
+& Une ligne par visite et produit.
+& Une ligne par item SOS relevé. \\
+\hline
+Utilité analytique
+& Analyse OSA et contrôles de disponibilité.
+& Agrégation SOS et visibilité en rayon. \\
+\hline
 \end{tabular}
-\end{tcolorbox}
-
-\caption{Étude de cas OSA : transformation en colonnes dynamiques}
-\label{tab:osa_transformation}
 \end{table}
 
-
-Cette logique correspond à une transformation de type \textit{pivot}. Elle permet de passer de plusieurs lignes question/réponse vers une ligne structurée par produit visité.
-
-\subsubsection{Étude de cas SOS : transformation en structure verticale}
-
-Le second cas concerne les données SOS. Contrairement à l’OSA, les réponses SOS ne sont pas transformées en colonnes dynamiques. Elles sont conservées sous forme verticale afin de représenter les mesures de part de linéaire, les valeurs relevées et le total associé.
-
-\begin{table}[H]
-\centering
-
-\begin{tcolorbox}[technicalbox,breakable=false,title={Étude de cas SOS --- Structure verticale},halign title=center]
-\small
-\renewcommand{\arraystretch}{1.35}
-\begin{tabular}{p{0.23\textwidth}|p{0.67\textwidth}}
-
-\textbf{Entrée Data Dump} &
-Ligne liée à une mesure de part de linéaire, contenant une question, une valeur relevée et un contexte de visite. \\
-\hline
-
-\textbf{Règle appliquée} &
-Les lignes dont le titre contient \textit{SOS} sont orientées vers la table \dbtable{task\_sos}. Le traitement ne transforme pas les questions en colonnes dynamiques. \\
-\hline
-
-\textbf{Transformation} &
-La question est conservée dans \dbtable{qst}, la réponse dans \dbtable{qst\_value}, et le total associé dans \dbtable{total}. Chaque ligne SOS reste donc un item d’analyse. \\
-\hline
-
-\textbf{Sortie SQL} &
-La table cible contient une ligne par item SOS, avec les champs \dbtable{visit\_id}, \dbtable{task}, \dbtable{response\_date}, \dbtable{qst}, \dbtable{qst\_value} et \dbtable{total}. \\
-\hline
-
-\textbf{Utilité} &
-Cette structure facilite les agrégations et les comparaisons nécessaires à l’analyse de la part de linéaire et de la visibilité en rayon.
-
-\end{tabular}
-\end{tcolorbox}
-
-\caption{Étude de cas SOS : transformation en structure verticale}
-\label{tab:sos_transformation}
-\end{table}
-
-Cette logique verticale est plus adaptée au SOS, car elle conserve les mesures sous une forme directement exploitable pour les analyses quantitatives.
+Cette comparaison montre que le pipeline adapte la structure SQL selon la nature métier des données. Les réponses OSA sont organisées pour faciliter l’analyse par visite et par produit, tandis que les données SOS conservent une structure verticale afin de préserver la logique de mesure de la part de linéaire.
 
 \subsubsection{Sorties générées et fiabilisation du rechargement}
 
-À partir du fichier \textit{Data Dump}, le pipeline alimente plusieurs familles de tables. Les tables \dbtable{employees}, \dbtable{stores}, \dbtable{products} et \dbtable{visits} structurent les principales entités métier. Les tables \dbtable{task\_*} conservent les réponses selon leur logique opérationnelle, tandis que \dbtable{survey\_responses} fournit une vue normalisée des réponses terrain.
+À partir du fichier \textit{Data Dump}, le pipeline alimente plusieurs familles de tables : les tables de référence, les visites, les tables détaillées \dbtable{task\_*} et la table normalisée \dbtable{survey\_responses}. Cette organisation permet de conserver à la fois des tables spécialisées par tâche et une vue transversale des réponses terrain.
 
-Afin de fiabiliser les relances du pipeline, les données détaillées associées aux visites retraitées sont nettoyées avant leur réinsertion. Cette opération concerne les tables \dbtable{task\_*} et \dbtable{survey\_responses}. Elle permet d’éviter l’accumulation de doublons et de garantir que les données détaillées correspondent au dernier fichier traité.
+Afin de fiabiliser les relances du pipeline, les données détaillées associées aux visites retraitées sont supprimées avant leur réinsertion. Cette logique évite l’accumulation de doublons et garantit que les tables reflètent le dernier fichier traité.
 
 \subsection{Intégration du Coverage et rapprochement avec le Data Dump}
 
-Le fichier \textit{Coverage} constitue la deuxième source principale du pipeline. Contrairement au fichier \textit{Data Dump}, qui contient les réponses détaillées issues des tâches terrain, le \textit{Coverage} apporte une vision opérationnelle de l’exécution des visites. Il permet notamment de suivre les visites planifiées, réalisées, rejetées, déviées ou non effectuées.
+Le fichier \textit{Coverage} constitue la deuxième source principale du pipeline. Contrairement au \textit{Data Dump}, qui contient les réponses détaillées des visites terrain, le \textit{Coverage} apporte une vision opérationnelle de l’exécution : visites planifiées, réalisées, rejetées, déviées ou non effectuées.
 
-Dans la solution, le \textit{Coverage} est chargé dans la table \dbtable{fact\_coverage}. Cette table conserve le grain opérationnel du fichier source, basé principalement sur la date de visite, le merchandiser et le magasin. Cette séparation est volontaire, car certaines lignes du \textit{Coverage}, comme les visites non effectuées ou rejetées, peuvent exister sans disposer de réponses détaillées dans le \textit{Data Dump}.
+Dans la solution, ce fichier est chargé dans la table \dbtable{fact\_coverage}. Cette table conserve le grain opérationnel du fichier source, principalement basé sur la date de visite, le merchandiser et le magasin. Elle permet ainsi de suivre l’état global de l’exécution, y compris les situations où aucune réponse détaillée n’est disponible dans le \textit{Data Dump}.
 
 \subsubsection{Rôle de la table de couverture opérationnelle}
 
-La table \dbtable{fact\_coverage} joue le rôle d’une table de faits opérationnelle. Elle centralise les informations nécessaires au suivi de l’exécution terrain : statut de visite, couverture, rejet, déviation, non-visite, distances GPS, temps d’exécution et motifs éventuels.
+La table \dbtable{fact\_coverage} joue le rôle d’une table de faits opérationnelle. Elle centralise les informations liées au statut des visites, à la couverture, aux rejets, aux déviations, aux non-visites, aux distances GPS, aux temps d’exécution et aux motifs éventuels.
 
-Son objectif n’est pas de remplacer les tables issues du \textit{Data Dump}, mais de compléter leur lecture. Le \textit{Data Dump} permet d’analyser le contenu détaillé des visites exécutées, tandis que le \textit{Coverage} permet d’évaluer l’état global de l’exécution, y compris les cas où aucune réponse terrain détaillée n’est disponible.
+Son rôle est complémentaire à celui des tables issues du \textit{Data Dump}. Le \textit{Data Dump} permet d’analyser le contenu détaillé des visites exécutées, tandis que le \textit{Coverage} permet d’évaluer l’avancement global du plan de visite.
 
-\subsubsection{Rapprochement optionnel avec les visites détaillées}
+\subsubsection{Rapprochement avec les visites détaillées}
 
-Afin de relier le suivi opérationnel issu du \textit{Coverage} avec les visites détaillées issues du \textit{Data Dump}, une vue SQL de rapprochement a été ajoutée : \dbtable{vw\_fact\_coverage\_visit\_match}. Cette vue ne remplace pas les tables existantes et ne modifie pas leur structure. Elle agit comme une couche logique de lecture permettant de comparer les lignes de \dbtable{fact\_coverage} avec les visites présentes dans la table \dbtable{visits}.
+Afin de relier les données opérationnelles du \textit{Coverage} aux visites détaillées issues du \textit{Data Dump}, une vue SQL a été ajoutée : \dbtable{vw\_fact\_coverage\_visit\_match}. Cette vue permet de comparer les lignes de \dbtable{fact\_coverage} avec les visites présentes dans la table \dbtable{visits}, sans modifier la structure des tables existantes.
 
-L’intérêt de cette approche est de conserver toutes les lignes du \textit{Coverage}, y compris les visites non effectuées, rejetées ou planifiées sans données détaillées. Le rapprochement est donc volontairement optionnel : lorsqu’une visite détaillée existe dans le \textit{Data Dump}, la vue expose son \dbtable{visit\_id}. Dans le cas contraire, la ligne Coverage reste visible avec un statut indiquant l’absence de visite détaillée.
+L’intérêt de cette approche est de conserver toutes les lignes du \textit{Coverage}, y compris les visites non effectuées, rejetées ou planifiées sans données détaillées. Lorsqu’une correspondance existe, la vue expose le \dbtable{visit\_id}. Dans le cas contraire, elle conserve la ligne Coverage avec un statut indiquant l’absence de visite détaillée.
 
 \begin{figure}[H]
     \centering
@@ -238,47 +174,19 @@ L’intérêt de cette approche est de conserver toutes les lignes du \textit{Co
     \label{fig:view_coverage_datadump_object}
 \end{figure}
 
-La figure \ref{fig:view_coverage_datadump_object} montre que le rapprochement a été implémenté sous forme d’une vue SQL distincte, et non comme une nouvelle table physique. Cette séparation permet de garder \dbtable{fact\_coverage} comme table de faits opérationnelle, tout en ajoutant une lecture croisée avec les visites détaillées lorsque celles-ci existent.
+Cette modélisation permet de rapprocher \dbtable{fact\_coverage} et \dbtable{visits} sans imposer de relation physique entre les deux tables. Elle conserve ainsi une lecture complète du \textit{Coverage}, tout en identifiant les visites disposant de réponses détaillées dans le \textit{Data Dump}.
 
-\begin{tcolorbox}[technicalbox,title={Logique de la vue de rapprochement}]
-\small
+% \subsubsection{Apport dans la solution}
 
-\textbf{Source principale :} \dbtable{fact\_coverage}, qui conserve les statuts opérationnels des visites : visité, non visité, rejeté ou en déviation.
+% Cette modélisation renforce la cohérence globale de la solution. Elle évite de forcer une relation physique entre \dbtable{fact\_coverage} et \dbtable{visits}, ce qui aurait pu poser problème pour les visites non effectuées ou rejetées. À la place, la vue SQL propose une lecture contrôlée et réversible, sans imposer de modification directe aux tables existantes ni aux services applicatifs déjà mis en place.
 
-\vspace{0.12cm}
-
-\textbf{Source rapprochée :} \dbtable{visits}, alimentée à partir du \textit{Data Dump} et représentant les visites disposant de données détaillées.
-
-\vspace{0.12cm}
-
-\textbf{Clé utilisée :} \dbtable{visit\_date} + \dbtable{employee\_code} + \dbtable{store\_code}.
-
-\vspace{0.12cm}
-
-\textbf{Résultat ajouté par la vue :} le champ \dbtable{visit\_id}, lorsqu’une correspondance est trouvée, et le champ \dbtable{match\_status} pour qualifier le rapprochement.
-
-\vspace{0.12cm}
-
-\textbf{Statut \dbtable{MATCHED} :} la ligne Coverage possède une visite détaillée correspondante dans le \textit{Data Dump}.
-
-\vspace{0.12cm}
-
-\textbf{Statut \dbtable{NO\_DATA\_DUMP\_VISIT} :} la ligne existe dans le \textit{Coverage}, mais aucune visite détaillée correspondante n’existe dans le \textit{Data Dump}.
-\end{tcolorbox}
-
-Cette approche renforce l’exploitation du fichier \textit{Coverage}. Celui-ci n’est pas seulement chargé dans une table, mais intégré comme une source de suivi opérationnel pouvant être comparée aux visites détaillées issues du \textit{Data Dump}. La vue permet ainsi d’identifier les visites disposant de réponses terrain, tout en conservant les situations présentes uniquement dans le suivi opérationnel.
-
-\subsubsection{Apport dans la solution}
-
-Cette modélisation renforce la cohérence globale de la solution. Elle évite de forcer une relation physique entre \dbtable{fact\_coverage} et \dbtable{visits}, ce qui aurait pu poser problème pour les visites non effectuées ou rejetées. À la place, la vue SQL propose une lecture contrôlée et réversible, sans imposer de modification directe aux tables existantes ni aux services applicatifs déjà mis en place.
-
-Elle constitue également une base utile pour les analyses futures, car elle distingue clairement les visites ayant des réponses détaillées de celles qui existent uniquement dans le suivi de couverture. Cette distinction peut ensuite être exploitée dans les tableaux de bord, les contrôles opérationnels ou les interfaces de suivi.
+% Elle constitue également une base utile pour les analyses futures, car elle distingue clairement les visites ayant des réponses détaillées de celles qui existent uniquement dans le suivi de couverture. Cette distinction peut ensuite être exploitée dans les tableaux de bord, les contrôles opérationnels ou les interfaces de suivi.
 
 \subsection{Modélisation et chargement dans MySQL}
 
-Après les étapes de préparation et de transformation, les données sont chargées dans une base MySQL nommée \dbtable{unilever\_db}. Cette base constitue le référentiel central de la solution. Elle permet de conserver les données issues des fichiers \textit{Data Dump} et \textit{Coverage}, de structurer les informations métier et de les rendre accessibles aux règles de validation, aux tableaux de bord et aux services applicatifs.
+Après les étapes de préparation et de transformation, les données sont chargées dans une base MySQL nommée \dbtable{unilever\_db}. Cette base constitue le référentiel central de la solution, car elle regroupe les données issues des fichiers \textit{Data Dump} et \textit{Coverage} et les rend exploitables par les règles de validation, les tableaux de bord et les services applicatifs.
 
-Le modèle retenu ne cherche pas à reproduire directement la structure des fichiers Excel. Il organise les données selon leur rôle dans la solution : les entités de référence, les visites, les réponses détaillées, les données de couverture, les résultats de validation et les journaux d’exécution.
+Le modèle retenu ne reproduit pas directement la structure des fichiers Excel. Il organise les données selon leur rôle dans la solution : données de référence, visites, réponses terrain, couverture opérationnelle, résultats de validation et journaux d’exécution.
 
 \begin{figure}[H]
     \centering
@@ -287,121 +195,117 @@ Le modèle retenu ne cherche pas à reproduire directement la structure des fich
     \label{fig:mysql_logical_model}
 \end{figure}
 
-La figure \ref{fig:mysql_logical_model} présente une vue simplifiée de l’organisation des données dans MySQL. Les fichiers \textit{Data Dump} et \textit{Coverage} alimentent des tables ayant des rôles complémentaires. Le \textit{Data Dump} permet de construire les tables de référence, les visites, les tables de tâches et la table normalisée \dbtable{survey\_responses}. Le \textit{Coverage} alimente la table \dbtable{fact\_coverage}, utilisée pour le suivi opérationnel des visites.
-
-Cette organisation permet de séparer les données stables, les données opérationnelles et les données analytiques. Elle facilite également l’exploitation des données par les règles de validation, les tableaux de bord et les APIs applicatives.
+La figure \ref{fig:mysql_logical_model} présente une vue simplifiée de l’organisation des données dans MySQL. Le \textit{Data Dump} alimente les tables de référence, les visites, les tables de tâches et la table \dbtable{survey\_responses}, tandis que le \textit{Coverage} alimente la table \dbtable{fact\_coverage}. Cette organisation permet de séparer les données stables, opérationnelles et analytiques.
 
 \subsubsection{Stratégie de chargement}
 
-Le chargement des données s’effectue de manière contrôlée afin d’éviter les doublons et de garantir la cohérence des informations insérées. Les tables de référence sont alimentées à partir des codes métier, comme le code employé, le code magasin ou le code produit. Lorsque ces éléments existent déjà dans la base, les informations peuvent être mises à jour sans créer de doublons.
+Le chargement des données s’effectue de manière contrôlée afin d’éviter les doublons et de garantir la cohérence des informations insérées. Les tables de référence sont alimentées à partir des codes métier, comme le code employé, le code magasin ou le code produit.
 
-Les visites sont chargées à partir d’une clé naturelle composée de la date de visite, du merchandiser et du magasin. Cette clé permet d’identifier une visite de manière cohérente et de relier ensuite les réponses terrain aux visites correspondantes.
-
-Pour les données détaillées issues du \textit{Data Dump}, le pipeline applique une logique de rechargement contrôlé. Avant d’insérer les nouvelles réponses associées aux visites retraitées, les anciennes lignes correspondantes sont supprimées des tables de tâches et de la table \dbtable{survey\_responses}. Cette étape permet de reconstruire proprement les données détaillées à partir du dernier fichier traité.
+Les visites sont identifiées à partir d’une clé naturelle composée de la date de visite, du merchandiser et du magasin. Pour les réponses détaillées, le pipeline applique une logique de rechargement contrôlé : les anciennes lignes associées aux visites retraitées sont supprimées avant l’insertion des nouvelles données.
 
 \subsubsection{Traçabilité des traitements}
 
-La traçabilité constitue un élément important du chargement. Le pipeline conserve des informations sur les exécutions réalisées, notamment à travers la table \dbtable{etl\_run\_log}. Cette table permet de suivre les traitements effectués, les fichiers concernés, les dates d’exécution et l’état global du chargement.
+La traçabilité des exécutions est assurée à travers la table \dbtable{etl\_run\_log}. Elle permet de conserver les informations liées aux traitements réalisés, aux fichiers concernés, aux dates d’exécution et à l’état global du chargement.
 
-Cette logique de suivi facilite l’analyse en cas d’erreur ou d’incohérence. Elle permet également de mieux comprendre l’historique des traitements appliqués aux données et de vérifier que les différentes étapes du pipeline ont été exécutées correctement.
-
-Ainsi, le chargement dans MySQL représente une étape centrale de la solution. Il transforme les fichiers Excel traités en un modèle relationnel exploitable, capable d’alimenter les validations métier, les tableaux de bord et les interfaces de consultation.
+Cette logique facilite le suivi des traitements et l’analyse en cas d’erreur. Ainsi, le chargement dans MySQL transforme les fichiers Excel traités en un modèle relationnel exploitable par les validations métier, les tableaux de bord et les interfaces de consultation.
 
 \section{Structuration de la base de données}
 
-La base MySQL \dbtable{unilever\_db} est structurée selon le rôle des données dans la solution. L’objectif n’est pas de reproduire directement les fichiers Excel, mais d’organiser les informations autour de plusieurs familles de tables : tables de référence, tables opérationnelles, tables détaillées d’exécution, vue de rapprochement, tables de validation et tables de traçabilité.
+La base MySQL \dbtable{unilever\_db} est organisée selon le rôle des données dans la solution. Elle regroupe les tables de référence, les tables opérationnelles, les tables détaillées d’exécution, la vue de rapprochement, les tables de validation et les tables de traçabilité.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=1\textwidth]{figures/database/tables_flow.png}
+\includegraphics[width=0.90\textwidth]{figures/database/tables_flow.png}
 \caption{Modèle relationnel simplifié de la base \dbtable{unilever\_db}}
 \label{fig:dbdiagram_simplified_model}
 \end{figure}
 
-La figure \ref{fig:dbdiagram_simplified_model} présente un modèle relationnel simplifié de la base. Elle ne reprend pas toutes les colonnes techniques, mais met en évidence les principales relations entre les visites, les magasins, les produits, les réponses terrain, la couverture opérationnelle et les résultats de validation.
+La figure \ref{fig:dbdiagram_simplified_model} présente une vue simplifiée du modèle relationnel. Les tables \dbtable{employees}, \dbtable{stores} et \dbtable{products} constituent les référentiels métier. Les tables \dbtable{visits} et \dbtable{fact\_coverage} portent les données opérationnelles issues du \textit{Data Dump} et du \textit{Coverage}.
 
-Les tables \dbtable{employees}, \dbtable{stores} et \dbtable{products} jouent le rôle de tables de référence. Elles décrivent les entités métier principales et évitent de répéter les mêmes informations dans les tables d’exécution. Les tables \dbtable{visits} et \dbtable{fact\_coverage} représentent les données opérationnelles : la première porte les visites détaillées issues du \textit{Data Dump}, tandis que la seconde conserve le suivi opérationnel issu du \textit{Coverage}.
+Les tables \dbtable{task\_*} conservent les réponses détaillées selon la nature des tâches terrain, tandis que \dbtable{survey\_responses} fournit une vue normalisée des réponses. Les tables \dbtable{supervisors} et \dbtable{supervisor\_stores} permettent de gérer le périmètre de consultation mobile par superviseur.
 
-Les tables \dbtable{task\_*} stockent les réponses détaillées selon la nature des tâches terrain. Certaines tâches, comme l’OSA, utilisent une logique de colonnes dynamiques, tandis que d’autres, comme le SOS, conservent une structure verticale. La table \dbtable{survey\_responses} complète ces tables spécialisées en fournissant une vue normalisée et transversale des réponses terrain.
-
-La vue \dbtable{vw\_fact\_coverage\_visit\_match} permet de rapprocher le \textit{Coverage} et les visites détaillées sans imposer de relation physique obligatoire. Enfin, les tables \dbtable{validation\_rules}, \dbtable{validation\_run\_log}, \dbtable{validation\_results} et \dbtable{etl\_run\_log} assurent le suivi des règles métier, des résultats de validation et des exécutions du pipeline.
+Enfin, la vue \dbtable{vw\_fact\_coverage\_visit\_match} assure le rapprochement entre la couverture opérationnelle et les visites détaillées. Les tables \dbtable{validation\_rules}, \dbtable{validation\_run\_log}, \dbtable{validation\_results} et \dbtable{etl\_run\_log} assurent la traçabilité des règles métier, des résultats de validation et des exécutions du pipeline.
 
 \section{Mise en place du moteur de validation}
 
-Après la structuration des données dans MySQL, une couche de validation a été mise en place afin de détecter certaines situations nécessitant une vérification opérationnelle. Ce moteur est implémenté en Python et s’appuie sur les données déjà chargées dans la base, notamment les visites, les magasins, les merchandisers et les réponses terrain.
+Après la structuration des données dans MySQL, une couche de validation a été développée afin d’identifier certaines situations nécessitant une vérification opérationnelle. Ce moteur est implémenté en Python et s’appuie sur les données déjà chargées dans la base \dbtable{unilever\_db}, notamment les visites, les magasins, les merchandisers et les réponses terrain.
 
-L’objectif de cette couche n’est pas de remplacer le contrôle humain, mais d’aider à identifier des situations inhabituelles. Les règles appliquées permettent de repérer des cas pouvant nécessiter une revue, comme des réponses OSA incohérentes avec le comportement global d’une bannière ou des coordonnées GPS inhabituelles sur des visites répétées.
-
-\begin{tcolorbox}[technicalbox,title={Synthèse des règles implémentées}]
-\small
-\textbf{Règle OSA -- formats MT :}
-détection d’une réponse \textit{Non} inhabituelle lorsque le comportement hebdomadaire de la même bannière et du même produit indique une disponibilité majoritairement positive. La règle s’appuie principalement sur \dbtable{survey\_responses}.
-
-\vspace{0.18cm}
-\hrule
-\vspace{0.18cm}
-\textbf{Règle GPS -- formats GT :}
-détection d’une visite dont la position GPS s’éloigne fortement de la position médiane observée pour le même merchandiser et le même magasin durant le mois. La règle s’appuie principalement sur \dbtable{visits}.
-\end{tcolorbox}
+L’objectif de cette couche n’est pas de remplacer le contrôle humain, mais de préparer une première détection automatique des situations inhabituelles. Les résultats produits par les règles sont stockés dans MySQL afin d’être consultés dans le portail back-office interne.
 
 \subsection{Principe général du moteur de validation}
 
-Le moteur de validation est organisé autour d’un registre de règles Python. Les règles disponibles sont déclarées dans ce registre, puis synchronisées avec la table \dbtable{validation\_rules}. Cette table permet de conserver les règles connues par le système et d’indiquer si elles sont actives ou non à l’aide du champ \dbtable{is\_active}.
-
-Lorsqu’une exécution de validation démarre, une ligne est créée dans \dbtable{validation\_run\_log}. Le moteur charge ensuite les règles actives, exécute les contrôles correspondants et insère les situations détectées dans \dbtable{validation\_results}. À la fin du traitement, le journal d’exécution est mis à jour avec le statut final, le nombre de règles exécutées et le nombre de situations détectées.
-
-Dans l’orchestration actuelle, la validation est exécutée après le traitement du fichier \textit{Data Dump}. Elle s’appuie donc principalement sur les tables alimentées par ce fichier, notamment \dbtable{visits} et \dbtable{survey\_responses}. L’exécution peut aussi être limitée aux visites affectées par le chargement en cours, afin d’éviter de retraiter inutilement l’ensemble de l’historique.
-
-\subsection{Règle de validation OSA pour les formats MT}
-
-La première règle concerne les réponses OSA pour les formats MT. Elle s’applique uniquement aux magasins de type \textit{HYPERMARKET}, \textit{SUPERMARKET LOWER} et \textit{SUPERMARKET UPPER}. Son objectif est de repérer des réponses de disponibilité produit qui paraissent inhabituelles par rapport au comportement observé sur une même bannière.
-
-La règle analyse les réponses \textit{Oui} et \textit{Non} dans \dbtable{survey\_responses}, puis les rapproche avec les visites et les magasins afin de prendre en compte le format du point de vente et la bannière. Une situation est signalée lorsqu’une réponse individuelle indique \textit{Non}, alors que le comportement hebdomadaire de la même bannière, du même produit et de la même question montre un taux de disponibilité élevé.
-
-Dans l’implémentation actuelle, une situation est générée lorsque le taux de disponibilité hebdomadaire est supérieur ou égal à 90\%.
-
-\subsection{Règle de validation GPS pour les formats GT}
-
-La seconde règle concerne la cohérence GPS des visites répétées dans les formats GT. Elle s’applique uniquement aux magasins de type \textit{GROCERY} et \textit{CASH AND CARRY}. Son objectif est d’identifier des coordonnées GPS inhabituelles pour des visites répétées au même point de vente.
-
-La règle analyse les coordonnées enregistrées dans \dbtable{visits}. Les visites sont regroupées par merchandiser, magasin, année et mois. Pour chaque groupe disposant d’un nombre suffisant de visites, le moteur calcule une position de référence à partir des coordonnées médianes, puis compare chaque visite à cette position.
-
-Une situation est signalée lorsque la distance entre la position GPS d’une visite et la position médiane du groupe dépasse un seuil défini. Dans l’implémentation actuelle, une anomalie est créée lorsque cette distance dépasse 1000 mètres. La sévérité devient plus élevée lorsque la distance atteint un seuil plus important.
-
-\subsection{Stockage des résultats de validation}
-
-Les résultats produits par les règles sont stockés dans la table \dbtable{validation\_results}. Cette table conserve les informations nécessaires à l’analyse des situations détectées : règle appliquée, visite concernée, magasin, merchandiser, produit lorsque celui-ci est disponible, valeur observée, valeur attendue, métrique calculée, message de validation et niveau de sévérité.
-
-La table contient également des champs de revue, tels que le statut de traitement, le commentaire, l’utilisateur ayant réalisé la revue et la date de revue. Ces champs permettent d’exploiter les situations détectées dans un portail back-office, où elles peuvent être consultées, analysées et suivies.
-
-La table \dbtable{validation\_run\_log} assure la traçabilité des exécutions du moteur. Elle permet de savoir quand une validation a été lancée, si elle s’est terminée correctement, combien de règles ont été exécutées et combien de situations ont été détectées.
-
-Dans l’état actuel de la solution, le moteur de validation reste limité à deux règles principales. Les seuils et les formats concernés sont définis dans le code Python. Cette approche reste adaptée au périmètre actuel du projet, tout en laissant la possibilité d’évoluer vers un moteur plus configurable.
-
-\section{Développement de la couche Business Intelligence}
-
-La couche Business Intelligence constitue la partie analytique de la solution. Elle permet de transformer les données centralisées dans MySQL en indicateurs de suivi opérationnel exploitables par les équipes métier. Son rôle est de fournir une lecture synthétique de l’exécution terrain, en complément des interfaces applicatives et des règles de validation.
-
-Dans le cadre du projet, Power BI a été utilisé comme outil de restitution afin de construire une première version analytique autour de la couverture, de la performance des merchandisers, des visites problématiques et de certains indicateurs liés à l’exécution terrain. Cette couche ne doit pas être considérée comme une plateforme BI totalement industrialisée, mais comme un modèle analytique préparé à partir de la base \dbtable{unilever\_db}.
-
-\subsection{Objectif de la couche BI}
-
-L’objectif de la couche BI est de rendre les données opérationnelles plus lisibles pour le suivi métier. Les fichiers \textit{Data Dump} et \textit{Coverage} contiennent une grande quantité d’informations, mais leur exploitation directe reste limitée lorsqu’il s’agit de suivre plusieurs indicateurs, de filtrer par période, superviseur ou merchandiser, ou de comparer les performances d’exécution.
-
-Power BI permet donc de regrouper les indicateurs clés dans des vues de pilotage. Ces vues facilitent le suivi du taux de couverture, de la complétion des tâches, des déviations, des visites non effectuées, des rejets, des distances GPS et de la performance par merchandiser. Elles permettent également de passer d’une lecture fichier par fichier à une lecture plus synthétique et interactive de l’exécution terrain.
-
-\subsection{Connexion directe à la base MySQL}
-
-La préparation de la couche BI commence par une connexion directe entre Power BI et la base MySQL \dbtable{unilever\_db}. Ce choix permet d’exploiter les données déjà centralisées par le pipeline Data Engineering, au lieu de repartir des fichiers Excel bruts. La couche BI s’appuie donc sur le même référentiel de données que le reste de la solution.
+Le moteur de validation est organisé autour d’un registre de règles Python. Les règles déclarées dans le projet sont synchronisées avec la table \dbtable{validation\_rules}, puis seules les règles actives sont exécutées. Chaque exécution crée une ligne dans \dbtable{validation\_run\_log}, exécute les contrôles métier, insère les situations détectées dans \dbtable{validation\_results}, puis met à jour le statut final de l’exécution.
 
 \begin{figure}[H]
 \centering
-\begin{minipage}{0.42\textwidth}
+\includegraphics[width=1\textwidth]{figures/validation/validation_rules_mysql1.png}
+\caption{Règles de validation enregistrées dans MySQL}
+\label{fig:validation_rules_mysql}
+\end{figure}
+
+La figure \ref{fig:validation_rules_mysql} montre que les règles de validation sont enregistrées dans la base MySQL. Cette organisation permet de conserver une trace des règles disponibles et de contrôler leur activation avant l’exécution du moteur.
+
+\subsection{Règle OSA appliquée aux formats MT}
+
+La première règle implémentée est la règle \dbtable{OSA\_UNUSUAL\_NON\_BY\_BANNER}. Elle s’applique uniquement aux magasins de type \textit{HYPERMARKET}, \textit{SUPERMARKET LOWER} et \textit{SUPERMARKET UPPER}. Elle exploite les réponses issues de \dbtable{survey\_responses}, croisées avec les tables \dbtable{visits} et \dbtable{stores}.
+
+Cette règle analyse les réponses \textit{Oui} et \textit{Non} liées aux questions contenant le terme \textit{DISPONIBLE}. Elle regroupe les réponses par semaine, produit et question, puis signale les réponses \textit{Non} lorsque le comportement du groupe indique une disponibilité fortement positive. Dans l’implémentation actuelle, la règle exige au moins 10 réponses, au moins 8 réponses \textit{Oui} et un taux de disponibilité supérieur ou égal à 90\%.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.60\textwidth]{figures/validation/osa_rule_implementation.png}
+\caption{Implémentation de la règle OSA appliquée aux formats MT}
+\label{fig:osa_rule_implementation}
+\end{figure}
+
+La figure \ref{fig:osa_rule_implementation} présente un extrait du code de la règle OSA. Elle met en évidence le périmètre MT, les filtres appliqués sur les réponses terrain, les seuils de détection et l’insertion des situations détectées dans la table \dbtable{validation\_results}.
+
+\subsection{Règle GPS appliquée aux formats GT}
+
+La deuxième règle implémentée est la règle \dbtable{GPS\_INCONSISTENT\_CHECKIN}. Elle s’applique uniquement aux magasins de type \textit{GROCERY} et \textit{CASH AND CARRY}. Elle repose principalement sur les coordonnées GPS enregistrées dans la table \dbtable{visits}.
+
+Les visites sont regroupées par merchandiser, magasin, année et mois. Pour chaque groupe contenant au moins trois visites, le moteur calcule une position GPS de référence à partir des coordonnées médianes. La distance entre chaque visite et cette position est ensuite calculée. Une situation est détectée lorsque cette distance dépasse 1000 mètres. La sévérité devient \textit{HIGH} lorsque la distance atteint au moins 2000 mètres.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.60\textwidth]{figures/validation/gps_rule_implementation.png}
+\caption{Implémentation de la règle GPS appliquée aux formats GT}
+\label{fig:gps_rule_implementation}
+\end{figure}
+
+La figure \ref{fig:gps_rule_implementation} montre un extrait du code de la règle GPS. Elle met en évidence le périmètre GT, les seuils de distance, le calcul de la position médiane, la comparaison avec la position observée et l’insertion des résultats dans la table \dbtable{validation\_results}.
+
+\subsection{Traçabilité de l’exécution du moteur}
+
+Au-delà de l’implémentation des règles, le moteur conserve une trace de chaque exécution dans la table \dbtable{validation\_run\_log}. Cette traçabilité permet de vérifier le statut du traitement, le nombre de règles exécutées et le nombre de situations détectées.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\textwidth]{figures/validation/validation_execution_terminal.png}
+\caption{Résultat d’exécution du moteur de validation}
+\label{fig:validation_execution_terminal}
+\end{figure}
+
+La figure \ref{fig:validation_execution_terminal} montre un exemple d’exécution réussie du moteur de validation. Elle confirme que les règles ont été exécutées et que les situations détectées ont été enregistrées dans la base MySQL.
+
+\section{Développement de la couche Business Intelligence}
+
+La couche Business Intelligence constitue la partie analytique de la solution. Elle permet d’exploiter les données centralisées dans MySQL afin de construire des vues de pilotage destinées au suivi de l’exécution terrain.
+
+Dans le cadre du projet, Power BI a été utilisé pour préparer une première restitution décisionnelle à partir de la base \dbtable{unilever\_db}. Cette partie présente la préparation technique de la couche BI : connexion à MySQL, structuration du modèle, création des mesures DAX et préparation des vues de restitution \cite{powerbi-doc}.
+
+\subsection{Connexion à la base MySQL}
+
+La préparation de la couche BI commence par une connexion directe entre Power BI et la base MySQL \dbtable{unilever\_db}. Ce choix permet d’exploiter les données déjà centralisées par le pipeline Data Engineering, au lieu de repartir des fichiers Excel bruts.
+
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.45\textwidth}
 \centering
 \includegraphics[width=\textwidth]{figures/dashboards/powerbi_mysql_connector.png}
 \end{minipage}
 \hfill
-\begin{minipage}{0.42\textwidth}
+\begin{minipage}{0.45\textwidth}
 \centering
 \includegraphics[width=\textwidth]{figures/dashboards/powerbi_mysql_connection.png}
 \end{minipage}
@@ -409,58 +313,194 @@ La préparation de la couche BI commence par une connexion directe entre Power B
 \label{fig:powerbi_mysql_connection}
 \end{figure}
 
-La figure \ref{fig:powerbi_mysql_connection} illustre les premières étapes de connexion à la base MySQL. Power BI permet d’abord de sélectionner le connecteur MySQL, puis de renseigner les informations nécessaires à l’accès à la base locale, notamment le serveur, le port, le nom de la base et les identifiants de connexion. Cette connexion directe permet d’utiliser les données structurées dans MySQL comme source principale du modèle BI.
-
-\subsection{Sélection des tables utiles}
-
-Après la connexion à MySQL, les tables nécessaires sont sélectionnées depuis le navigateur Power BI. Toutes les tables de la base ne sont pas utilisées dans le modèle BI. La sélection se fait selon les besoins d’analyse : suivi de couverture, performance merchandiser, analyse des tâches terrain, filtres par magasin, période ou superviseur.
-
-Les tables sélectionnées concernent principalement la table \dbtable{fact\_coverage}, les visites, les référentiels métier et les tables de tâches. Les tables de validation, telles que \dbtable{validation\_results}, \dbtable{validation\_rules} et \dbtable{validation\_run\_log}, sont plutôt destinées au portail back-office de suivi des situations détectées. Elles ne constituent donc pas la source principale de la couche BI opérationnelle.
+La figure \ref{fig:powerbi_mysql_connection} illustre la sélection du connecteur MySQL et la configuration de la connexion à la base locale. Cette connexion permet d’utiliser MySQL comme source principale du modèle Power BI.
 
 \subsection{Préparation du modèle Power BI}
 
-Une fois les tables importées, le modèle Power BI est structuré à travers les relations nécessaires entre les tables. Cette étape permet d’assurer la cohérence des filtres entre les dates, les merchandisers, les magasins et les données opérationnelles. Elle constitue une phase importante, car les indicateurs ne dépendent pas uniquement des tables importées, mais aussi de la manière dont elles sont reliées dans le modèle.
+Après la connexion à MySQL, les tables utiles sont sélectionnées selon les besoins d’analyse. La sélection se concentre principalement sur les données nécessaires au suivi opérationnel : la table \dbtable{fact\_coverage}, les visites, les magasins, les merchandisers, les superviseurs et certaines tables de tâches.
 
-La table \dbtable{fact\_coverage} constitue la source principale des indicateurs opérationnels, car elle contient les informations liées aux visites planifiées, réalisées, non visitées, rejetées ou en déviation. Elle est complétée par des tables de référence comme les employés, les magasins, les produits et les superviseurs. Des tables analytiques sont également préparées dans Power BI, comme \dbtable{Date\_Dim}, \dbtable{Dim\_Merch}, \dbtable{Merch}, \dbtable{Store}, \dbtable{Store GPS Median}, \dbtable{Executive} et \dbtable{PREVIOUS PERIOD KPI}.
+Le modèle Power BI est ensuite structuré à travers les relations nécessaires entre les tables. Cette étape permet d’assurer la cohérence des filtres entre les dates, les merchandisers, les magasins et les données opérationnelles. Les tables de validation restent principalement réservées au portail back-office interne.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.82\textwidth]{figures/dashboards/powerbi_model_relationships.png}
+\includegraphics[width=1\textwidth]{figures/dashboards/powerbi_model_relationships.png}
 \caption{Modèle relationnel préparé dans Power BI}
 \label{fig:powerbi_model_relationships}
 \end{figure}
 
-La figure \ref{fig:powerbi_model_relationships} présente le modèle relationnel préparé dans Power BI. Ce modèle met en relation les tables importées depuis MySQL avec des tables analytiques créées pour faciliter le filtrage temporel, l’analyse par merchandiser, l’analyse par magasin et le calcul des indicateurs. Cette étape permet de passer d’un simple import de tables à un modèle exploitable pour la restitution décisionnelle.
+La figure \ref{fig:powerbi_model_relationships} présente le modèle relationnel préparé dans Power BI. Ce modèle permet de passer d’un simple import de tables à une structure exploitable pour le filtrage, l’agrégation et le calcul des indicateurs.
 
-\subsection{Mesures et indicateurs construits}
+\subsection{Mesures DAX et indicateurs construits}
 
-Plusieurs mesures ont été construites dans Power BI afin de suivre l’exécution terrain. Les principaux indicateurs concernent le taux de couverture, la complétion des tâches, le taux de déviation, le taux de rejet, les visites non effectuées, les visites problématiques, la durée moyenne de visite et les indicateurs liés à la cohérence GPS.
+Plusieurs mesures DAX ont été créées afin de transformer les données opérationnelles en indicateurs dynamiques. Ces mesures permettent de calculer les visites planifiées, les visites exécutées, le taux de couverture, les déviations ainsi qu’un score synthétique de productivité.
 
-Un indicateur composite de productivité a également été défini afin de résumer la performance d’un merchandiser à partir de plusieurs dimensions opérationnelles. Cet indicateur combine des facteurs positifs, tels que la couverture, la complétion des tâches et la conformité GPS, avec des facteurs pénalisants, comme les déviations et les rejets.
+La logique de calcul repose principalement sur la table \dbtable{fact\_coverage}. Les mesures se recalculent automatiquement selon les filtres sélectionnés dans Power BI, notamment la période, le merchandiser, le superviseur, la ville ou le format de magasin.
 
-\begin{tcolorbox}[technicalbox,title={Logique du score de productivité}]
-\small
-Le score de productivité combine trois facteurs positifs : le taux de couverture, la complétion des tâches et la conformité GPS. Il applique également une pénalisation liée au taux de déviation et au taux de rejet. Cet indicateur a été construit dans le cadre du projet afin de faciliter la comparaison analytique entre merchandisers, sans remplacer l’analyse détaillée des indicateurs qui le composent.
-\end{tcolorbox}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/dashboards/powerbi_dax_productivity_score.png}
+\caption{Mesure DAX du score de productivité}
+\label{fig:powerbi_dax_productivity_score}
+\end{figure}
+
+La figure \ref{fig:powerbi_dax_productivity_score} présente la mesure DAX utilisée pour construire le score de productivité. Ce score synthétise plusieurs dimensions de performance opérationnelle dans un seul indicateur.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/dashboards/powerbi_dax_coverage_measures.png}
+\caption{Exemples de mesures DAX liées au taux de couverture}
+\label{fig:powerbi_dax_coverage_measures}
+\end{figure}
+
+La figure \ref{fig:powerbi_dax_coverage_measures} présente des exemples de mesures DAX utilisées pour calculer les visites planifiées, les visites exécutées et le taux de couverture. Ces mesures constituent la base des indicateurs opérationnels affichés dans les tableaux de bord.
 
 \subsection{Vues de restitution préparées}
 
-Deux vues principales ont été préparées dans Power BI. La première correspond au \textit{National Retail Execution Dashboard}. Elle permet de suivre les indicateurs globaux de l’exécution terrain, notamment la couverture, les tâches réalisées, les visites planifiées, les visites non effectuées, les rejets, les déviations et les visites problématiques.
+Deux vues principales ont été préparées dans Power BI afin d’exploiter le modèle BI construit à partir de MySQL. La première vue, intitulée \textit{National Retail Execution Dashboard}, est conçue comme une vue de pilotage globale de l’exécution terrain.
 
-La seconde vue correspond au \textit{Merchandiser Performance Intelligence}. Elle est orientée vers l’analyse individuelle des merchandisers. Elle permet de suivre la couverture, la complétion des tâches, la durée de travail, la durée moyenne de visite, les indicateurs GPS, les visites non effectuées et les situations problématiques associées à un merchandiser donné.
+La seconde vue, intitulée \textit{Merchandiser Performance Intelligence}, est orientée vers l’analyse individuelle des merchandisers. Elle permet de structurer le suivi autour de la couverture, de la complétion des tâches, de la durée de visite et des indicateurs liés à la cohérence GPS.
 
-Dans ce chapitre, la couche BI est présentée sous l’angle de sa préparation technique : connexion à MySQL, sélection des tables utiles, construction du modèle, création des mesures et préparation des vues de restitution. Les captures et l’interprétation des tableaux de bord seront présentées dans le chapitre consacré à la réalisation et aux résultats.
+Dans ce chapitre, la couche BI est présentée sous l’angle de sa préparation technique. Les captures finales des tableaux de bord et l’interprétation des résultats seront présentées dans le chapitre consacré à la réalisation, aux tests et aux résultats.
 
 \section{Développement de la couche backend}
 
-\subsection{Architecture Spring Boot et Java}
-\subsection{APIs REST destinées à l’application mobile}
-\subsection{APIs REST destinées au back-office}
+La couche backend constitue l’intermédiaire entre la base MySQL \dbtable{unilever\_db} et les interfaces applicatives de la solution. Elle a été développée avec Spring Boot afin d’exposer les données centralisées sous forme d’APIs REST consommées par l’application mobile et par le portail back-office \cite{springboot-doc}.
+
+Cette couche ne se limite pas à transmettre les données brutes. Elle applique également une partie de la logique métier nécessaire à l’exploitation de la solution, notamment le filtrage par superviseur, le calcul des indicateurs opérationnels et la séparation entre les données accessibles côté client et les résultats de validation réservés au back-office interne.
+
+\subsection{Rôle de la couche backend}
+
+Le rôle principal du backend est de rendre les données préparées par le pipeline Data Engineering accessibles à travers des services applicatifs contrôlés. Les tables MySQL contiennent les données issues du \textit{Data Dump}, du \textit{Coverage} et du moteur de validation, mais elles ne sont pas exploitées directement par les interfaces.
+
+Le backend organise donc les accès selon les usages. L’application mobile est orientée vers la consultation client : elle affiche les magasins affectés, les statuts d’exécution et les indicateurs opérationnels. À l’inverse, le portail back-office est réservé au suivi interne des situations détectées par les règles de validation.
+
+Cette séparation permet de distinguer clairement les APIs destinées à la consultation mobile et celles destinées au suivi interne des validations.
+
+\subsection{Organisation technique du backend}
+
+Le backend repose sur une organisation en contrôleurs REST, services métier et objets de transfert de données. Les contrôleurs exposent les endpoints, les services portent la logique de traitement et les DTOs structurent les réponses retournées aux interfaces sous forme JSON.
+
+L’accès aux données est réalisé à l’aide de \dbtable{JdbcTemplate}. Ce choix permet de garder un contrôle direct sur les requêtes SQL utilisées pour interroger les tables opérationnelles et les tables de validation, notamment pour les agrégations, les filtres par période et les jointures entre tables.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\textwidth]{figures/API/backend_logical_architecture.png}
+\caption{Architecture logique de la couche backend}
+\label{fig:backend_logical_architecture}
+\end{figure}
+
+La figure \ref{fig:backend_logical_architecture} présente l’architecture logique de la couche backend. Elle met en évidence le rôle central de l’API Spring Boot entre la base MySQL, l’application mobile, le portail back-office et les outils de documentation et de vérification.
+
+\subsection{Gestion de l’accès mobile par superviseur}
+
+L’accès mobile a été conçu de manière ciblée afin que chaque superviseur consulte uniquement les magasins relevant de son périmètre. Cette logique repose sur les tables \dbtable{supervisors} et \dbtable{supervisor\_stores}, qui permettent d’associer chaque superviseur à un ensemble de magasins autorisés.
+
+Dans la base MySQL, chaque superviseur est identifié par un code, un nom, une ville et une région. La table d’association permet ensuite de définir le nombre de magasins rattachés à ce superviseur. Cette organisation constitue la base du filtrage appliqué dans l’application mobile lors de la consultation des magasins.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/database/supervisor_store_assignment.png}
+    \caption{Exemple de gestion du périmètre d’accès mobile par superviseur dans MySQL}
+    \label{fig:supervisor_store_assignment}
+\end{figure}
+
+La figure \ref{fig:supervisor_store_assignment} montre un exemple de requête permettant de vérifier l’affectation des magasins par superviseur. Cette vérification confirme que l’accès mobile peut être limité à un périmètre précis, en fonction des magasins associés à chaque superviseur.
+
+\subsection{Logique d’authentification mobile}
+
+La logique d’authentification mobile repose sur une connexion par email et mot de passe. Lorsqu’un utilisateur saisit ses identifiants dans l’application mobile, une requête est envoyée vers l’endpoint \dbtable{/api/mobile/login}. Le backend vérifie l’existence d’un compte actif, puis compare le mot de passe saisi avec le hachage stocké dans la base à l’aide de BCrypt.
+
+Après une authentification réussie, le backend retourne les informations du superviseur connecté, notamment son identifiant, son rôle et le nombre de magasins affectés. Ces informations permettent ensuite à l’application mobile de charger uniquement les données correspondant au périmètre autorisé.
+
+\subsection{Séparation entre consultation client et validation interne}
+
+L’architecture applicative repose sur une séparation claire entre les services destinés à la consultation client et ceux réservés au suivi interne. Les endpoints mobiles permettent d’alimenter l’application de consultation utilisée par les superviseurs côté client, tandis que les endpoints back-office sont dédiés au traitement des situations détectées par le moteur de validation.
+
+Cette séparation permet d’éviter l’exposition directe des résultats de validation dans l’application mobile. Les superviseurs accèdent uniquement aux informations utiles à la consultation opérationnelle, alors que les équipes internes disposent d’un portail spécifique pour analyser les anomalies, consulter leur détail et suivre leur traitement.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.80\textwidth]{figures/API/swagger_api_groups.png}
+    \caption{Documentation Swagger des endpoints mobiles et back-office}
+    \label{fig:swagger_api_groups}
+\end{figure}
+
+La figure \ref{fig:swagger_api_groups} illustre cette séparation à travers la documentation Swagger. On y distingue les endpoints mobiles destinés à la consultation client, les endpoints back-office liés aux validations, les services cartographiques ainsi que l’endpoint système utilisé pour vérifier l’état du backend.
+
+\subsection{Vérification des APIs}
+
+Afin de vérifier le bon fonctionnement des services exposés par le backend, Postman a été utilisé pour tester certains endpoints. Un premier test a été réalisé sur l’authentification mobile afin de confirmer que l’API reçoit correctement l’email et le mot de passe, puis retourne les informations du superviseur connecté lorsque les identifiants sont valides.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/API/postman_mobile_login.png}
+\caption{Test de l’authentification mobile par email avec Postman}
+\label{fig:postman_mobile_login}
+\end{figure}
+
+La figure \ref{fig:postman_mobile_login} montre un appel réussi à l’endpoint \dbtable{/api/mobile/login}. La présence du champ \dbtable{assignedStoreCount} confirme que l’authentification est liée au périmètre de magasins affectés au superviseur.
+
+Une seconde vérification a été réalisée sur l’endpoint \dbtable{/api/system/health}. Cet endpoint permet de contrôler rapidement l’état du backend et sa connexion à la base MySQL.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/API/api_system_health.png}
+\caption{Vérification de l’état du backend avec l’endpoint \dbtable{/api/system/health}}
+\label{fig:api_system_health}
+\end{figure}
+
+La figure \ref{fig:api_system_health} confirme que le service backend répond correctement et que la connexion à la base MySQL est opérationnelle. Ces tests complètent la documentation Swagger et permettent de vérifier le bon fonctionnement des principaux services exposés.
+
+\newpage
 
 \section{Développement des interfaces applicatives}
 
-\subsection{Interface mobile Expo / React Native}
-\subsection{Portail back-office React}
-\subsection{Limites actuelles de l’authentification}
+Après la mise en place de la couche backend, la solution a été complétée par deux interfaces applicatives consommant les APIs REST développées. La première est une application mobile de consultation, destinée au suivi opérationnel des magasins affectés. La seconde est un portail back-office interne, destiné à l’exploitation et au suivi des résultats de validation.
+
+Cette séparation permet d’adapter chaque interface à son usage : consultation opérationnelle côté client et suivi interne côté Smollan.
+
+\subsection{Organisation générale des interfaces}
+
+L’organisation des interfaces repose sur deux parcours complémentaires. L’application mobile, développée avec Expo et React Native, consomme principalement les APIs \url{/api/mobile} \cite{expo-doc,reactnative-doc}. Elle regroupe les vues nécessaires à la consultation du périmètre affecté : connexion, tableau de bord, exécution des merchandisers, liste ou carte des magasins et détail magasin.
+
+Le portail back-office, développé avec React, consomme les APIs internes liées aux validations et au suivi cartographique \cite{react-doc}. Il regroupe les vues nécessaires au traitement interne : centre de validation, liste des situations détectées, détail d’une situation, statut de revue, commentaires et suivi cartographique.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/mobile/interfaces_organization.png}
+\caption{Organisation générale des interfaces applicatives}
+\label{fig:interfaces_organization}
+\end{figure}
+
+La figure \ref{fig:interfaces_organization} présente la séparation entre l’application mobile client et le portail back-office interne, tous deux reliés à la couche backend selon leurs besoins fonctionnels.
+
+\subsection{Application mobile de consultation client}
+
+L’application mobile constitue l’interface de consultation destinée au suivi opérationnel côté client. Elle permet à un superviseur ou commercial connecté de consulter uniquement les magasins associés à son périmètre d’affectation.
+
+Après authentification, l’application récupère les informations du compte connecté puis interroge les endpoints mobiles pour afficher les indicateurs de suivi, l’activité des merchandisers et la liste des magasins. Elle permet également de consulter le détail d’un point de vente, notamment son statut de visite, le merchandiser associé et les informations d’exécution disponibles.
+
+L’application mobile ne présente pas les résultats du moteur de validation. Elle reste orientée vers une consultation opérationnelle claire des magasins, des statuts d’exécution et de l’activité terrain.
+
+\subsection{Portail back-office interne}
+
+Le portail back-office constitue l’interface interne de suivi des situations détectées par le moteur de validation. Contrairement à l’application mobile, il est destiné aux équipes internes Smollan afin de consulter, analyser et suivre les résultats issus des règles de contrôle.
+
+Le back-office consomme principalement les APIs \dbtable{/api/backoffice/validation} et \dbtable{/api/backoffice/store-map}. Il permet d’accéder au centre de validation, à la liste des situations détectées, au détail d’une situation, aux statuts de revue et aux commentaires internes.
+
+Cette interface complète le moteur de validation en transformant les situations détectées automatiquement en éléments de suivi opérationnel. Elle ne remplace pas l’analyse métier, mais facilite l’identification, la revue et le traitement des cas nécessitant une attention.
+
+\subsection{Limites actuelles et évolutions possibles}
+
+Les interfaces développées permettent de valider les principaux usages attendus dans le cadre du projet : consultation mobile du périmètre affecté, suivi opérationnel de l’exécution terrain et revue interne des situations détectées.
+
+Certaines limites restent toutefois à prendre en compte. Le mécanisme d’authentification repose actuellement sur une connexion par email et mot de passe avec hachage BCrypt, sans gestion complète de jetons ou de sessions. De plus, la liste des superviseurs et des magasins affectés repose sur une structure prototype, en attendant la liste officielle du client Unilever.
+
+Les évolutions possibles concernent donc le renforcement de l’authentification, l’intégration de la liste officielle des affectations, l’ajout de filtres avancés et l’enrichissement du portail back-office par des exports ou des indicateurs de synthèse supplémentaires.
 
 \section{Conclusion}
+
+Ce chapitre a présenté la mise en œuvre technique de la solution adoptée, depuis l’ingestion des fichiers \textit{Data Dump} et \textit{Coverage} jusqu’à leur exploitation dans les différentes couches de la solution. Le pipeline Data Engineering a permis de transformer les exports Excel en données structurées dans la base MySQL \dbtable{unilever\_db}, tout en assurant la traçabilité des traitements.
+
+Cette base centralisée alimente ensuite les principales composantes de la solution : le moteur de validation, la couche Business Intelligence, le backend Spring Boot et les interfaces applicatives. Le moteur de validation intègre des contrôles métier OSA pour les formats MT et GPS pour les formats GT. La couche BI prépare les indicateurs de pilotage dans Power BI, tandis que le backend expose les données à travers des APIs REST documentées et vérifiées.
+
+Enfin, les interfaces applicatives ont été organisées selon deux usages distincts : une application mobile dédiée à la consultation opérationnelle du périmètre affecté, et un portail back-office réservé au suivi interne des situations détectées. Le chapitre suivant présentera les tests réalisés ainsi que les principaux résultats obtenus.

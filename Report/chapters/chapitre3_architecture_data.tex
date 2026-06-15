@@ -2,26 +2,21 @@
 
 \section{Introduction}
 
-Après l’analyse de l’existant, des sources de données et des besoins identifiés, ce chapitre présente la conception globale de la solution proposée. L’objectif est de décrire l’organisation générale de la solution avant de détailler, dans les chapitres suivants, ses différentes composantes techniques et fonctionnelles.
+Après l’analyse de l’existant et des besoins identifiés, ce chapitre présente la conception globale de la solution proposée. Il vise à expliquer l’organisation générale de la solution data-driven mise en place pour centraliser, structurer et exploiter les données issues des opérations de merchandising terrain du projet Unilever.
 
-La solution retenue repose sur une approche data-driven permettant de structurer les données issues des opérations de merchandising terrain, de les centraliser dans une base cohérente et de les exploiter à travers plusieurs supports de restitution. Cette conception vise à répondre aux besoins de suivi interne, de consultation orientée client et de validation opérationnelle.
-
-Ce chapitre présente d’abord la vision générale de la solution, puis son architecture globale. Il décrit ensuite les principales couches fonctionnelles retenues, à savoir la couche d’acquisition et de traitement des données, la couche centrale de données, la couche Business Intelligence, l’interface de consultation client et le portail back-office interne. Enfin, il introduit les principaux choix technologiques adoptés dans le cadre du projet.
+La solution repose sur une architecture organisée en plusieurs couches : acquisition des fichiers, traitement et orchestration des données, centralisation dans MySQL, restitution analytique, consultation orientée client et back-office interne de validation. Ce chapitre présente donc la vision générale de la solution, son architecture globale, ses couches fonctionnelles et les principaux choix technologiques retenus.
 
 \section{Vision générale de la solution}
 
-La solution proposée vise à transformer les données issues des fichiers \textit{Data Dump} et \textit{Coverage} en informations structurées, exploitables et adaptées aux différents besoins de suivi. Elle ne remplace pas le processus métier existant, mais vient le compléter en apportant une meilleure organisation des données, une centralisation de l’historique et une restitution plus claire des indicateurs opérationnels.
+La solution proposée vise à transformer les fichiers \textit{Data Dump} et \textit{Coverage} en données structurées, centralisées et exploitables pour le suivi des opérations terrain du projet Unilever. Elle ne remplace pas le processus métier existant, mais l’enrichit par une meilleure organisation des données, une conservation de l’historique et une restitution adaptée aux besoins des utilisateurs.
 
-La vision générale de la solution repose sur une chaîne de traitement allant de l’extraction des fichiers opérationnels jusqu’à la restitution des résultats. Les fichiers exportés depuis la plateforme Smollan sont d’abord analysés, nettoyés et transformés à travers un processus de traitement des données. Les informations pertinentes sont ensuite chargées dans une base de données relationnelle, qui constitue le socle central de la solution.
+La chaîne de traitement part des exports du portail Smollan, puis passe par des étapes d’analyse, de nettoyage, de transformation et de chargement dans une base MySQL. Cette base constitue le socle commun utilisé pour les tableaux de bord, l’interface de consultation client et le portail back-office interne.
 
-À partir de cette base, plusieurs usages sont rendus possibles. Les tableaux de bord permettent aux équipes internes de suivre les indicateurs de performance et l’avancement des opérations. L’interface de consultation orientée client permet aux superviseurs concernés d’accéder aux informations liées aux magasins qui leur sont affectés. Le back-office interne permet quant à lui de consulter les résultats des règles de validation et de suivre les situations nécessitant une vérification.
-
-Cette organisation permet de distinguer les usages tout en conservant une même base de données centrale. Elle assure ainsi une cohérence entre les données utilisées pour le pilotage, la consultation et la validation opérationnelle.
-
+Ainsi, la solution distingue les usages tout en conservant une même source de données : pilotage interne à travers les tableaux de bord, consultation ciblée des magasins affectés côté client, et suivi interne des situations nécessitant une validation opérationnelle.
 
 \section{Architecture globale}
 
-L’architecture globale de la solution a été conçue autour d’une chaîne de traitement allant de la collecte des données terrain jusqu’à leur exploitation par les différents utilisateurs. Elle met en relation les sources opérationnelles, les mécanismes d’acquisition des fichiers, le pipeline de traitement, la base de données centrale et les couches de restitution.
+L’architecture globale de la solution a été conçue autour d’une chaîne de traitement allant de la collecte des données terrain jusqu’à leur exploitation par les différents utilisateurs. Elle relie les sources opérationnelles, les mécanismes d’acquisition, le pipeline de traitement, la base de données centrale et les couches de restitution.
 
 \begin{figure}[H]
     \centering
@@ -30,66 +25,70 @@ L’architecture globale de la solution a été conçue autour d’une chaîne d
     \label{fig:architecture_globale}
 \end{figure}
 
-La figure \ref{fig:architecture_globale} présente l’organisation générale de la solution proposée. Les données sont d’abord collectées sur le terrain par les merchandisers à travers l’application Smart 3, puis synchronisées avec le portail Smollan. À partir de ce portail, deux modes d’acquisition sont pris en compte : l’utilisation de fichiers Excel déjà disponibles localement et l’automatisation de l’export via Playwright. Ces deux modes alimentent les mêmes fichiers d’entrée, à savoir le \textit{Data Dump} et le \textit{Coverage}.
+La figure \ref{fig:architecture_globale} présente la logique générale de la solution. Les données sont collectées sur le terrain via l’application Smart 3, puis synchronisées avec le portail Smollan. À partir de ce portail, deux modes d’acquisition sont pris en compte : le \textbf{mode local}, basé sur des fichiers Excel déjà disponibles, et le \textbf{mode portail}, basé sur l’automatisation de l’export via Playwright.
 
-La partie centrale de l’architecture repose sur un pipeline orchestré par Prefect. Ce pipeline organise les étapes de traitement, de contrôle et de chargement des données. Les fichiers d’entrée passent par une logique de traitement inspirée de l’architecture en médaillon : une couche Bronze pour conserver les données brutes, une couche Silver pour nettoyer et structurer les données, puis une couche Gold pour produire des données prêtes à l’analyse. Une couche de validation complète ce processus en appliquant des règles métier permettant d’identifier certaines situations nécessitant une vérification opérationnelle.
+La partie centrale repose sur un pipeline orchestré par Prefect. Ce pipeline organise l’ingestion, le nettoyage, la transformation, le contrôle et le chargement des données. Il permet également d’exécuter des règles métier afin d’identifier certaines situations nécessitant une vérification opérationnelle.
 
-Les données structurées ainsi que les résultats de validation sont ensuite centralisés dans une base MySQL. Cette base constitue le socle commun de la solution, car elle alimente à la fois les tableaux de bord Power BI et les services applicatifs développés avec Spring Boot en Java. Ces services exposent des APIs REST consommées par l’interface mobile Expo / React Native et par le portail web back-office React.
+Les données structurées et les résultats de validation sont centralisés dans une base MySQL. Cette base alimente les tableaux de bord Power BI ainsi que les services applicatifs développés avec Spring Boot. Ces services exposent des APIs REST consommées par l’interface mobile Expo / React Native et par le portail back-office React.
+
+Le traitement des données suit une logique inspirée de l’\textbf{architecture en médaillon}. Cette organisation permet de distinguer les niveaux de préparation des données avant leur utilisation~:
+\begin{itemize}
+    \item \textbf{Couche Bronze :} elle correspond aux données brutes issues des fichiers sources \textit{Data Dump} et \textit{Coverage}, conservées comme point d’entrée du traitement.
+    
+    \item \textbf{Couche Silver :} elle regroupe les données nettoyées, harmonisées et structurées afin de corriger les incohérences et de préparer les relations entre les entités.
+    
+    \item \textbf{Couche Gold :} elle correspond aux données prêtes à l’exploitation, utilisées pour les indicateurs, les règles de validation, les tableaux de bord et les interfaces applicatives.
+\end{itemize}
+
+Cette logique permet de mieux expliquer le passage des exports Excel vers une base de données centralisée et exploitable dans une démarche data-driven.
+
 \section{Séparation des couches fonctionnelles}
 
-L’architecture proposée repose sur une séparation des couches fonctionnelles afin de mieux organiser les responsabilités de chaque composante. Cette séparation permet de distinguer les étapes d’acquisition, de traitement, de centralisation, d’analyse et de restitution des données. Elle facilite également l’évolution progressive de la solution, car chaque couche peut être améliorée ou enrichie sans remettre en cause l’ensemble de l’architecture.
+L’architecture proposée repose sur une séparation des couches fonctionnelles afin de clarifier le rôle de chaque composante. Cette organisation distingue l’acquisition, le traitement, la centralisation, l’analyse et la restitution des données.
 
 \subsection{Couche d’acquisition des données}
 
-La couche d’acquisition constitue le point d’entrée des données dans la solution. Elle repose sur les fichiers opérationnels issus du portail Smollan, principalement les fichiers \textit{Data Dump} et \textit{Coverage}. Deux modes d’acquisition sont pris en compte dans le projet : l’utilisation de fichiers Excel déjà disponibles localement et l’automatisation de l’export depuis le portail à l’aide de Playwright.
-
-Cette couche permet donc de récupérer les fichiers nécessaires au traitement, tout en conservant une certaine flexibilité. Le traitement peut être lancé à partir de fichiers sélectionnés par chemin local, ou à partir de fichiers téléchargés automatiquement lorsque l’automatisation est utilisée.
+La couche d’acquisition constitue le point d’entrée de la solution. Elle repose sur les fichiers \textit{Data Dump} et \textit{Coverage} issus du portail Smollan. Deux modes sont pris en compte : le \textbf{mode local}, basé sur des fichiers Excel déjà disponibles, et le \textbf{mode portail}, basé sur l’automatisation de l’export à l’aide de Playwright.
 
 \subsection{Couche d’orchestration et de Data Engineering}
 
-La couche d’orchestration et de Data Engineering représente le cœur technique de la solution. Elle organise les différentes étapes du pipeline de traitement, depuis l’ingestion des fichiers jusqu’à la préparation des données structurées. L’orchestration est assurée par Prefect, qui permet de contrôler l’exécution des étapes, de suivre les traitements et de faciliter la gestion des erreurs.
-
-Le traitement des données est réalisé à l’aide de scripts Python, en s’appuyant notamment sur des bibliothèques adaptées au traitement de fichiers Excel et de données tabulaires. Cette couche assure le nettoyage, l’harmonisation, la transformation et la structuration des informations issues des fichiers sources. La logique adoptée distingue les données brutes, les données nettoyées et les données prêtes pour l’analyse ou la validation.
+Cette couche organise le pipeline de traitement des données. L’orchestration est assurée par Prefect, tandis que les traitements Python permettent de nettoyer, harmoniser, transformer et structurer les informations issues des fichiers sources.
 
 \subsection{Couche centrale de données}
 
-La couche centrale de données repose sur une base MySQL nommée \textit{unilever\_db}. Elle constitue le socle commun de la solution, car elle centralise les données nécessaires aux différents usages : reporting, consultation et validation opérationnelle.
-
-Cette base permet de regrouper les informations de référence, les données opérationnelles, les réponses terrain, les tables liées aux tâches et les résultats de validation. Elle joue donc un rôle essentiel dans la consolidation de l’historique et dans la mise à disposition d’une source de données cohérente pour les autres couches de la solution.
+La couche centrale repose sur la base MySQL \textit{unilever\_db}. Elle regroupe les données de référence, les données opérationnelles, les réponses terrain, les tables de tâches et les résultats de validation. Elle constitue ainsi la source commune utilisée par les tableaux de bord et les interfaces applicatives.
 
 \subsection{Couche Business Intelligence}
 
-La couche Business Intelligence est destinée à la restitution analytique des données. Elle permet de produire des tableaux de bord orientés vers le suivi des indicateurs opérationnels, tels que la couverture, les déviations, l’OSA, le SOS ou encore la performance des merchandisers.
-
-Dans le cadre du projet, cette couche vise principalement à faciliter la lecture des données par les équipes internes et à soutenir le pilotage opérationnel. Les tableaux de bord permettent ainsi d’obtenir une vision synthétique de l’activité terrain et d’identifier plus rapidement les situations nécessitant une attention particulière.
+La couche Business Intelligence est destinée à l’analyse décisionnelle des données centralisées dans MySQL. Dans le cadre du projet, elle permet de construire des dashboards orientés vers le pilotage opérationnel, notamment à travers une vue exécutive de suivi national et une vue d’analyse de la performance d’un merchandiser GT.
 
 \subsection{Couche applicative de consultation et de validation}
 
-La couche applicative regroupe les interfaces de consultation et de validation. Elle s’appuie sur des services backend développés avec Spring Boot, qui permettent d’interroger la base de données et de fournir les informations nécessaires aux interfaces.
+La couche applicative s’appuie sur un backend Spring Boot exposant des APIs REST. Ces services permettent d’interroger la base MySQL et d’alimenter l’interface mobile Expo / React Native ainsi que le portail back-office React.
 
-L’interface de consultation client, réalisée avec React Native et Expo Go, permet aux superviseurs Unilever de consulter les magasins qui leur sont affectés, ainsi que les informations liées à l’exécution terrain. Le portail back-office interne, développé avec React, est destiné au suivi des résultats de validation, notamment les anomalies OSA, les contrôles GPS et les situations nécessitant une revue opérationnelle.
+L’interface mobile est orientée vers la consultation client des magasins affectés et des informations d’exécution terrain. Le portail back-office interne est, quant à lui, destiné au suivi des résultats de validation et à la revue des situations détectées par les règles métier.
 
-Cette couche permet donc de distinguer les usages selon les profils concernés : consultation orientée client d’un côté, et validation interne de l’autre.
-
-Après avoir présenté l’organisation fonctionnelle de la solution, il convient de préciser les principaux choix technologiques retenus pour mettre en œuvre ces différentes couches.
+Cette séparation permet de distinguer les usages : consultation côté client, pilotage analytique et validation interne.
 
 \section{Choix technologiques}
 
-Les choix technologiques ont été définis en cohérence avec l’architecture globale de la solution. Chaque outil retenu intervient dans une couche précise du projet : acquisition des fichiers, orchestration du pipeline, traitement des données, centralisation, restitution analytique ou mise en place des interfaces de consultation et de validation.
+Les choix technologiques ont été définis en cohérence avec les couches de l’architecture globale. Chaque outil intervient dans une partie précise de la solution : acquisition des fichiers, orchestration du pipeline, traitement des données, centralisation, restitution analytique ou développement applicatif.
+
+Ces choix s’appuient sur des outils adaptés au contexte du projet et sur leurs documentations officielles, consultées afin de garantir une utilisation cohérente dans la solution \cite{python-doc,pandas-doc,mysql-doc,prefect-doc,springboot-doc,powerbi-doc,react-doc,expo-doc}.
 
 \subsection{Outils d’acquisition et d’orchestration}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.13\textwidth]{figures/technologies/Playwright_automation.png}
-    \caption*{\textbf{Playwright}}
+    % \caption*{\textbf{Playwright}}
 \end{figure}
 
 Playwright a été retenu pour automatiser une partie de l’acquisition des fichiers depuis le portail Smollan. Il permet de reproduire certaines actions effectuées dans un navigateur, notamment l’accès au portail, l’application des filtres et le téléchargement des exports Excel. Dans le cadre du projet, il constitue un mode d’acquisition complémentaire à l’utilisation de fichiers déjà disponibles localement.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.13\textwidth]{figures/technologies/prefect.png}
+    \includegraphics[width=0.20\textwidth]{figures/technologies/prefect.png}
     % \caption*{\textbf{Prefect}}
 \end{figure}
 
@@ -100,14 +99,14 @@ Prefect est utilisé pour orchestrer le pipeline de traitement des données. Son
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.1\textwidth]{figures/technologies/Python.png}
-    \caption*{\textbf{Python}}
+    % \caption*{\textbf{Python}}
 \end{figure}
 
 Python constitue le langage principal utilisé pour la mise en place du pipeline de traitement. Il permet de lire les fichiers sources, d’appliquer les transformations nécessaires, de préparer les données structurées et d’alimenter la base centrale. Son utilisation est adaptée au contexte du projet, qui repose sur des fichiers Excel, des traitements tabulaires et des règles métier évolutives.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.13\textwidth]{figures/technologies/Pandas.png}
+    \includegraphics[width=0.2\textwidth]{figures/technologies/Pandas.png}
     % \caption*{\textbf{pandas}}
 \end{figure}
 
@@ -115,7 +114,7 @@ La bibliothèque pandas est utilisée pour manipuler les données sous forme de 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.20\textwidth]{figures/technologies/openpyxl.png}
+    \includegraphics[width=0.30\textwidth]{figures/technologies/openpyxl.png}
     % \caption*{\textbf{openpyxl}}
 \end{figure}
 
@@ -125,7 +124,7 @@ openpyxl complète l’utilisation de pandas pour certaines opérations liées a
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.14\textwidth]{figures/technologies/MySQL.png}
+    \includegraphics[width=0.16\textwidth]{figures/technologies/MySQL.png}
     % \caption*{\textbf{MySQL}}
 \end{figure}
 
@@ -134,10 +133,12 @@ MySQL a été retenu pour centraliser les données structurées du projet dans u
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.12\textwidth]{figures/technologies/Power_BI.png}
-    \caption*{\textbf{Power BI}}
+    % \caption*{\textbf{Power BI}}
 \end{figure}
 
-Power BI est utilisé pour la restitution analytique des données. Il permet de construire des tableaux de bord destinés au suivi des indicateurs opérationnels, tels que la couverture, les déviations, l’OSA, le SOS ou encore la performance des merchandisers. Ce choix répond au besoin de fournir une lecture synthétique et visuelle des données aux équipes internes.
+Power BI est utilisé pour la restitution analytique des données centralisées dans MySQL. Il permet de construire des dashboards orientés vers l’aide à la décision, notamment une vue exécutive de suivi national et une vue d’analyse de la performance d’un merchandiser GT. Ce choix répond au besoin de transformer les indicateurs opérationnels en constats lisibles pour le management.
+
+\newpage
 
 \subsection{Outils de la couche applicative}
 
@@ -146,36 +147,46 @@ Power BI est utilisé pour la restitution analytique des données. Il permet de 
     \raisebox{-0.1cm}{\includegraphics[height=1.6cm]{figures/technologies/Java.png}}
     \hspace{0.8cm}
     \raisebox{-0.1cm}{\includegraphics[height=1.2cm]{figures/technologies/spring-boot.png}}
-    \caption*{\textbf{Java et Spring Boot}}
+    % \caption*{\textbf{Java et Spring Boot}}
 \end{figure}
 
 Java est utilisé pour le développement de la couche backend de la solution. Associé au framework Spring Boot, il permet de mettre en place des services applicatifs structurés et des APIs REST assurant l’accès aux données centralisées dans MySQL. Cette couche joue le rôle d’intermédiaire entre la base de données et les interfaces de restitution, notamment l’interface mobile Expo / React Native et le portail back-office React.
+
 \begin{figure}[H]
     \centering
-    \raisebox{-0.1cm}{\includegraphics[height=1.3cm]{figures/technologies/react_native.png}}
+    \raisebox{-0.1cm}{\includegraphics[height=1.5cm]{figures/technologies/swagger.png}}
     \hspace{0.8cm}
-    \raisebox{0.05cm}{\includegraphics[height=0.8cm]{figures/technologies/Expo_Go.png}}
-    \caption*{\textbf{React Native et Expo Go}}
+    \raisebox{-0.1cm}{\includegraphics[height=1.5cm]{figures/technologies/postman.png}}
+    % \caption*{\textbf{Swagger/OpenAPI et Postman}}
 \end{figure}
 
-React Native, avec Expo Go, est utilisé pour l’interface mobile de consultation orientée client. Cette interface permet aux superviseurs Unilever de consulter les magasins qui leur sont affectés, ainsi que certaines informations liées à l’exécution terrain. Ce choix facilite la mise en place d’une interface mobile progressive et adaptée à la consultation des données opérationnelles.
+Swagger/OpenAPI et Postman ont été utilisés pour documenter et vérifier les APIs exposées par le backend. Swagger permet d’explorer les endpoints depuis une interface web, tandis que Postman permet de tester les requêtes HTTP, de vérifier les réponses retournées et de valider certains comportements importants de l’API.
+\begin{figure}[H]
+    \centering
+    \raisebox{-0.1cm}{\includegraphics[height=1.5cm]{figures/technologies/react_native.png}}
+    \hspace{0.8cm}
+    \raisebox{0.05cm}{\includegraphics[height=0.8cm]{figures/technologies/Expo_Go.png}}
+    % \caption*{\textbf{React Native et Expo Go}}
+\end{figure}
+
+React Native, avec Expo Go, est utilisé pour l’interface mobile de consultation orientée client. Cette interface permet aux superviseurs ou utilisateurs côté client de consulter les magasins qui leur sont affectés, ainsi que certaines informations liées à l’exécution terrain. Ce choix facilite la mise en place d’une interface mobile progressive et adaptée à la consultation des données opérationnelles.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.12\textwidth]{figures/technologies/React.png}
-    \caption*{\textbf{React}}
+    % \caption*{\textbf{React}}
 \end{figure}
 
-React est utilisé pour le portail back-office interne. Cette interface web permet de consulter les résultats de validation, notamment les anomalies OSA, les contrôles GPS et les situations nécessitant une revue opérationnelle. Il permet de construire une interface interactive, adaptée au suivi interne et à l’évolution future du portail.
+React est utilisé pour le portail back-office interne. Cette interface web permet de consulter les résultats de validation, notamment les situations détectées par les règles OSA, les contrôles GPS et les situations nécessitant une revue opérationnelle. Il permet de construire une interface interactive, adaptée au suivi interne et à l’évolution future du portail.
 
 \subsection{Synthèse des choix technologiques}
 
-L’ensemble de ces choix technologiques permet de couvrir les différentes couches de la solution. Playwright et Prefect interviennent dans l’acquisition et l’orchestration, Python, pandas et openpyxl assurent le traitement des données, MySQL centralise les informations, tandis que Power BI, Java/Spring Boot, React Native, Expo Go et React permettent de restituer et d’exposer les résultats selon les besoins des utilisateurs.
+L’ensemble des choix technologiques couvre les principales couches de la solution. Playwright et Prefect interviennent dans l’acquisition des fichiers et l’orchestration du pipeline. Python, pandas et openpyxl assurent le traitement des données issues des fichiers Excel, tandis que MySQL centralise les informations structurées.
+
+La restitution et l’exploitation des données reposent ensuite sur Power BI pour les tableaux de bord, Spring Boot pour les APIs REST, React Native avec Expo Go pour l’interface mobile et React pour le portail back-office. Swagger/OpenAPI et Postman complètent cette organisation en facilitant la documentation et la vérification des APIs.
 
 \section{Conclusion}
 
-Ce chapitre a présenté la conception globale de la solution proposée. Il a permis de décrire la vision générale du projet, l’architecture globale ainsi que les principales couches fonctionnelles qui composent la solution.
+Ce chapitre a présenté la conception globale de la solution, en décrivant sa vision générale, son architecture et la séparation de ses principales couches fonctionnelles. L’architecture retenue permet de passer des fichiers opérationnels \textit{Data Dump} et \textit{Coverage} vers une base centralisée, puis vers des restitutions adaptées au pilotage, à la consultation client et à la validation interne.
 
-L’architecture retenue repose sur une séparation claire entre l’acquisition des données, l’orchestration des traitements, la structuration des données, la centralisation dans MySQL et les couches d’exploitation. Cette organisation permet de répondre aux besoins identifiés dans l’analyse de l’existant, tout en conservant une solution progressive et évolutive.
-
-Les choix technologiques présentés montrent que la solution combine des outils de Data Engineering, de Business Intelligence et de développement applicatif. Le chapitre suivant sera consacré à la mise en place du pipeline Data Engineering, en détaillant les étapes d’ingestion, de transformation et de chargement des données issues des fichiers \textit{Data Dump} et \textit{Coverage}.
+Les choix technologiques présentés montrent que la solution combine des outils de Data Engineering, de Business Intelligence et de développement applicatif. Le chapitre suivant détaille la mise en œuvre de cette solution, notamment le pipeline de traitement, la structuration des données, le moteur de validation, les tableaux de bord, le backend et les interfaces applicatives.

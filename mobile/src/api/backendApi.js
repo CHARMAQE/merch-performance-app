@@ -1,11 +1,43 @@
 // Expo Go on a physical phone must call the Windows PC LAN IP.
 // localhost works only for web/emulator contexts where the app runs on the same machine.
-const DEFAULT_MOBILE_API_BASE_URL = "http://192.168.1.171:9000";
-const LAN_API_BASE =
-  process.env.EXPO_PUBLIC_API_BASE_URL || DEFAULT_MOBILE_API_BASE_URL;
-const REQUEST_TIMEOUT_MS = 30000;
+import Constants from "expo-constants";
 
-export const API_BASE = LAN_API_BASE;
+const REQUEST_TIMEOUT_MS = 30000;
+const BACKEND_PORT = 9000;
+
+function getExpoHost() {
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    Constants.manifest?.debuggerHost ||
+    Constants.manifest2?.extra?.expoGo?.debuggerHost;
+
+  if (!hostUri) return null;
+
+  return hostUri.split(":")[0];
+}
+
+function resolveApiBaseUrl() {
+  const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+
+  if (envUrl && envUrl.trim() !== "" && envUrl !== "auto") {
+    return envUrl;
+  }
+
+  const expoHost = getExpoHost();
+
+  if (expoHost) {
+    return `http://${expoHost}:${BACKEND_PORT}`;
+  }
+
+  return "http://localhost:9000";
+}
+
+export const API_BASE = resolveApiBaseUrl();
+export { REQUEST_TIMEOUT_MS };
+
+
+
+
 
 class ApiError extends Error {
   constructor(message, details = {}) {
@@ -119,6 +151,18 @@ export function getSupervisorMerchandiserStores(supervisorId, employeeCode, filt
 
   return request(
     `/api/mobile/merchandisers/${encodeURIComponent(employeeCode)}/stores?${params.toString()}`
+  );
+}
+
+export function getVisitTasksOverview(supervisorId, visitId) {
+  const params = new URLSearchParams();
+
+  if (supervisorId !== null && supervisorId !== undefined) {
+    params.set("supervisorId", String(supervisorId));
+  }
+
+  return request(
+    `/api/mobile/visits/${encodeURIComponent(visitId)}/tasks-overview?${params.toString()}`
   );
 }
 

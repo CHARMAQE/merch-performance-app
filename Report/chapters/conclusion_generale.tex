@@ -1,14 +1,19 @@
-\chapter*{Conclusion generale}
-\addcontentsline{toc}{chapter}{Conclusion generale}
+\chapter*{Conclusion générale}
+\markboth{CONCLUSION GÉNÉRALE}{}
+\addcontentsline{toc}{chapter}{Conclusion générale}
 
-% TODO: Rediger la conclusion generale apres finalisation des chapitres.
-% Elle devra synthetiser les apports reels du projet, ses limites et les perspectives principales.
+Ce Projet de Fin d’Études a été réalisé dans un contexte opérationnel concret, lié au suivi des opérations de merchandising terrain du projet Unilever chez Smollan Morocco. Le point de départ du travail était une situation réelle : les données issues des visites terrain étaient disponibles à travers des exports, notamment \textit{Data Dump} et \textit{Coverage}, mais leur exploitation restait fortement dépendante des fichiers Excel, des traitements manuels et de rapports préparés séparément. Cette organisation permettait de suivre l’activité, mais elle limitait la centralisation, la traçabilité et l’analyse structurée des données dans le temps.
 
-\section*{Synthese du travail realise}
+Le travail réalisé a permis de proposer une solution data-driven structurée autour d’une chaîne complète de traitement et d’exploitation des données. Les fichiers opérationnels sont préparés et transformés à travers un pipeline Data Engineering, puis chargés dans une base MySQL centralisée. À partir de cette base, plusieurs usages deviennent possibles : l’analyse décisionnelle à travers Power BI, la consultation des indicateurs via une application mobile côté client, ainsi que le suivi interne des situations détectées à travers un portail back-office.
 
-\section*{Apports du projet}
+L’un des apports principaux du projet réside dans la transformation du rôle des fichiers Excel. Dans le processus initial, ces fichiers constituaient à la fois la source, l’espace de travail et le support d’analyse. Dans la solution proposée, ils deviennent principalement des données d’entrée. Les traitements, les contrôles, l’historisation et la restitution sont déplacés vers une architecture plus structurée, reposant sur le pipeline, la base de données, les APIs et les interfaces de suivi.
 
-\section*{Limites et perspectives}
+Les résultats obtenus montrent l’intérêt de cette approche. L’exécution automatisée du pipeline en 9 minutes et 23 secondes, contre un temps de préparation manuel estimé à environ 2h30, met en évidence un gain significatif. Au-delà du temps gagné, la solution améliore la traçabilité des traitements, centralise les données dans MySQL et permet de réutiliser les mêmes informations pour différents besoins : reporting, consultation, validation interne et aide à la décision.
 
-\section*{Conclusion finale}
+Le moteur de validation constitue également un apport important. Les règles OSA et GPS ne visent pas à remplacer la décision métier, mais à orienter la revue interne vers des situations nécessitant une attention particulière. Cette logique permet de transformer un volume important de données terrain en signaux plus ciblés, exploitables par les équipes internes à travers le back-office.
 
+La séparation entre les usages a également été respectée. L’application mobile est orientée vers la consultation côté client : elle présente les informations utiles au suivi du périmètre, des magasins, des visites et des tâches exécutées. Le back-office, de son côté, reste réservé au suivi interne des résultats de validation et au traitement des situations détectées. Cette distinction évite de mélanger les indicateurs de consultation avec les informations sensibles liées aux règles, aux statuts de revue ou aux décisions internes.
+
+Toutefois, la solution réalisée reste une version de PFE et non une plateforme totalement industrialisée. Certaines améliorations restent nécessaires avant un déploiement à grande échelle, notamment l’hébergement de la solution, le renforcement de la sécurité, la gestion avancée des rôles et des droits, l’enrichissement progressif des règles métier et l’ajout d’analyses historiques plus avancées dans les tableaux de bord.
+
+Ce travail a ainsi permis de passer d’une logique de suivi dispersée autour des fichiers Excel à une approche plus structurée, fondée sur la centralisation, l’automatisation, la validation métier et la restitution des données. La solution proposée constitue une base fonctionnelle pour améliorer le suivi et l’analyse des opérations de merchandising terrain du projet Unilever chez Smollan Morocco, tout en offrant des perspectives d’évolution vers une solution plus robuste et plus industrialisée.

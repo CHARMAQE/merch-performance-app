@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Dimensions,
   Easing,
   Keyboard,
   PanResponder,
@@ -13,19 +14,25 @@ import {
   View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import { getSupervisorStoreDetails } from "../api/backendApi";
-import { StoreMetric } from "../components/StoreMetric";
 import {
   MOROCCO_REGION,
   STORE_FOCUS_DELTA,
-  STORE_SHEET_COMPACT_HEIGHT,
-  STORE_SHEET_EXPANDED_HEIGHT,
-  STORE_SHEET_LONG_NAME_HEIGHT,
 } from "../constants/appConstants";
 import { colors } from "../constants/colors";
 import { styles } from "../styles/appStyles";
-import { formatDate, formatNumber, formatPercentage } from "../utils/formatters";
+import { formatDate } from "../utils/formatters";
 import { sortBySearchScore } from "../utils/search";
+
+const STORE_SHEET_EXPANDED_BOTTOM_OFFSET = 8;
+const STORE_SHEET_COLLAPSED_HEIGHT = 48;
+const STORE_SHEET_COLLAPSED_VISIBLE_HEIGHT = 28;
+const STORE_SHEET_COLLAPSED_BOTTOM_OFFSET =
+  STORE_SHEET_COLLAPSED_VISIBLE_HEIGHT - STORE_SHEET_COLLAPSED_HEIGHT;
+const STORE_SHEET_DEFAULT_EXPANDED_HEIGHT = 360;
+const STORE_SHEET_MAX_EXPANDED_HEIGHT = Math.min(
+  Math.round(Dimensions.get("window").height * 0.55),
+  460
+);
 
 export function StoreMapScreen({
   supervisorId,
@@ -35,36 +42,42 @@ export function StoreMapScreen({
   onSelectStore,
   selectedStore,
   onOpenStoreDetail,
+  onOpenStoreExecution,
 }) {
   const mapRef = useRef(null);
   const ignoreNextMapPressRef = useRef(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState("");
-  const [storeDetails, setStoreDetails] = useState(null);
-  const [isStoreDetailsLoading, setIsStoreDetailsLoading] = useState(false);
-  const [storeDetailsError, setStoreDetailsError] = useState("");
   const [isStoreSheetExpanded, setIsStoreSheetExpanded] = useState(false);
   const [viewMode, setViewMode] = useState("map");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [storeStatusFilter, setStoreStatusFilter] = useState("all");
+  const [sheetContentHeight, setSheetContentHeight] = useState(0);
   const sheetAnimation = useRef(new Animated.Value(0)).current;
   const sheetStartProgressRef = useRef(0);
-  const selectedStoreName = selectedStore?.storeName || "";
-  const compactSheetHeight =
-    selectedStoreName.length > 18
-      ? STORE_SHEET_LONG_NAME_HEIGHT
-      : STORE_SHEET_COMPACT_HEIGHT;
+  const expandedSheetHeight = sheetContentHeight
+    ? Math.min(
+        sheetContentHeight + STORE_SHEET_COLLAPSED_HEIGHT + 12,
+        STORE_SHEET_MAX_EXPANDED_HEIGHT
+      )
+    : Math.min(
+        STORE_SHEET_DEFAULT_EXPANDED_HEIGHT,
+        STORE_SHEET_MAX_EXPANDED_HEIGHT
+      );
   const sheetHeight = sheetAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: [compactSheetHeight, STORE_SHEET_EXPANDED_HEIGHT],
+    outputRange: [STORE_SHEET_COLLAPSED_HEIGHT, expandedSheetHeight],
   });
-  const sheetDetailsOpacity = sheetAnimation.interpolate({
+  const sheetBottom = sheetAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 1],
+    outputRange: [
+      STORE_SHEET_COLLAPSED_BOTTOM_OFFSET,
+      STORE_SHEET_EXPANDED_BOTTOM_OFFSET,
+    ],
   });
-  const sheetDetailsHeight = sheetAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 350],
+  const sheetContentOpacity = sheetAnimation.interpolate({
+    inputRange: [0, 0.2, 1],
+    outputRange: [0, 0, 1],
   });
 
   function animateStoreSheet(expanded) {
@@ -87,13 +100,19 @@ export function StoreMapScreen({
           sheetStartProgressRef.current = isStoreSheetExpanded ? 1 : 0;
         },
         onPanResponderMove: (_, gestureState) => {
-          const dragDistance = STORE_SHEET_EXPANDED_HEIGHT - compactSheetHeight;
+          const dragDistance = expandedSheetHeight - STORE_SHEET_COLLAPSED_HEIGHT;
           const nextProgress =
             sheetStartProgressRef.current - gestureState.dy / dragDistance;
 
           sheetAnimation.setValue(Math.max(0, Math.min(1, nextProgress)));
         },
         onPanResponderRelease: (_, gestureState) => {
+          const dragDistance = expandedSheetHeight - STORE_SHEET_COLLAPSED_HEIGHT;
+          const nextProgress = Math.max(
+            0,
+            Math.min(1, sheetStartProgressRef.current - gestureState.dy / dragDistance)
+          );
+
           if (gestureState.vy < -0.25 || gestureState.dy < -24) {
             if (isStoreSheetExpanded) {
               animateStoreSheet(true);
@@ -112,10 +131,15 @@ export function StoreMapScreen({
             return;
           }
 
-          animateStoreSheet(isStoreSheetExpanded);
+          const shouldExpand = nextProgress >= 0.5;
+          if (shouldExpand === isStoreSheetExpanded) {
+            animateStoreSheet(shouldExpand);
+          } else {
+            setIsStoreSheetExpanded(shouldExpand);
+          }
         },
       }),
-    [compactSheetHeight, isStoreSheetExpanded, sheetAnimation]
+    [expandedSheetHeight, isStoreSheetExpanded, sheetAnimation]
   );
 
   useEffect(() => {
@@ -148,22 +172,37 @@ export function StoreMapScreen({
 
     return stores
       .filter((store) => {
-        if (statusFilter === "all") {
-          return true;
+        if (storeStatusFilter === "deviation") {
+          return hasStoreDeviation(store);
         }
 
-        return getStoreStatusKey(store) === statusFilter;
+        if (storeStatusFilter === "covered") {
+          return !hasStoreDeviation(store);
+        }
+
+        return true;
       })
       .filter((store) => {
         if (!normalizedSearch) {
           return true;
         }
 
-        return [store.storeCode, store.storeName, store.city, store.storeCity, store.storeFormat, store.username]
+        return [
+          store.storeCode,
+          store.storeName,
+          store.city,
+          store.storeCity,
+          store.region,
+          store.storeRegion,
+          store.storeFormat,
+          store.username,
+          store.merchandiserName,
+          store.supervisorName,
+        ]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(normalizedSearch));
       });
-  }, [searchTerm, statusFilter, stores]);
+  }, [searchTerm, storeStatusFilter, stores]);
 
   const matchingStores = useMemo(() => {
     if (!searchTerm.trim() || selectedStore) {
@@ -216,52 +255,6 @@ export function StoreMapScreen({
   useEffect(() => {
     let isMounted = true;
 
-    async function loadStoreDetails() {
-      if (!selectedStore?.storeCode) {
-        setStoreDetails(null);
-        setStoreDetailsError("");
-        return;
-      }
-
-      if (!supervisorId) {
-        setStoreDetails(null);
-        setStoreDetailsError("Supervisor login is missing.");
-        return;
-      }
-
-      try {
-        setIsStoreDetailsLoading(true);
-        setStoreDetailsError("");
-        const details = await getSupervisorStoreDetails(
-          supervisorId,
-          selectedStore.storeCode
-        );
-
-        if (isMounted) {
-          setStoreDetails(details);
-        }
-      } catch (detailLoadError) {
-        if (isMounted) {
-          setStoreDetails(null);
-          setStoreDetailsError("Unable to load data. Please check backend connection.");
-        }
-      } finally {
-        if (isMounted) {
-          setIsStoreDetailsLoading(false);
-        }
-      }
-    }
-
-    loadStoreDetails();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedStore, supervisorId]);
-
-  useEffect(() => {
-    let isMounted = true;
-
     async function loadUserLocation() {
       try {
         const permission = await Location.requestForegroundPermissionsAsync();
@@ -307,7 +300,7 @@ export function StoreMapScreen({
 
     Keyboard.dismiss();
     onSelectStore(store);
-    setIsStoreSheetExpanded(false);
+    setIsStoreSheetExpanded(true);
     setSearchTerm(store.storeName || store.storeCode || "");
     mapRef.current?.animateToRegion(
       {
@@ -345,39 +338,85 @@ export function StoreMapScreen({
     );
   }
 
-  const merchandiserLabel = storeDetails?.merchandiserName
-    ? `${storeDetails.merchandiserName}${storeDetails?.merchandiserUserId ? ` (${storeDetails.merchandiserUserId})` : ""}`
-    : "Not available";
+  function handleSheetContentLayout(event) {
+    const nextHeight = Math.ceil(event.nativeEvent.layout.height);
+
+    setSheetContentHeight((currentHeight) =>
+      Math.abs(currentHeight - nextHeight) > 2 ? nextHeight : currentHeight
+    );
+  }
+
+  const selectedStoreDetails = selectedStore || {};
+  const selectedStoreCity = selectedStoreDetails.city || selectedStoreDetails.storeCity;
+  const selectedStoreRegion = selectedStoreDetails.region || selectedStoreDetails.storeRegion;
+  const selectedStoreDate = selectedStoreDetails.latestVisitDate || selectedStoreDetails.visitDate;
+  const selectedStoreMerchandiser =
+    selectedStoreDetails.merchandiserName || selectedStoreDetails.username;
+  const selectedStoreHasDeviation = hasStoreDeviation(selectedStoreDetails);
+  const selectedStoreDeviationReason = selectedStoreHasDeviation
+    ? selectedStoreDetails.deviationReason
+    : null;
+  const selectedStoreVisitId = getStoreVisitId(selectedStoreDetails);
+
+  function openSelectedStoreExecution() {
+    if (!selectedStore?.storeCode) {
+      return;
+    }
+
+    if (selectedStoreVisitId) {
+      onOpenStoreExecution?.(selectedStoreDetails);
+      return;
+    }
+
+    onOpenStoreDetail?.(selectedStoreDetails);
+  }
+
+  function openStoreCard(store) {
+    if (getStoreVisitId(store)) {
+      onOpenStoreExecution?.(store);
+      return;
+    }
+
+    onOpenStoreDetail?.(store);
+  }
 
   return (
     <View style={styles.mapScreen}>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <View style={styles.mapSearchPanel}>
-        {isLoading ? (
-          <View style={styles.mapLoadingPill}>
-            <ActivityIndicator color={colors.navy} size="small" />
-          </View>
-        ) : null}
-        <TextInput
-          value={searchTerm}
-          onChangeText={(value) => {
-            setSearchTerm(value);
-            onSelectStore(null);
-          }}
-          placeholder="Search store name or code"
-          placeholderTextColor={colors.muted}
-          autoCapitalize="none"
-          style={styles.mapSearchInput}
-        />
-        {searchTerm || selectedStore ? (
-          <Pressable
-            style={styles.mapSearchClear}
-            onPress={resetMapView}
-          >
-            <Text style={styles.mapSearchClearText}>Clear</Text>
-          </Pressable>
-        ) : null}
+        {/* <View style={styles.storeMapNavbar}>
+          <View style={styles.compactNavSpacer} />
+          <Text style={styles.compactNavTitle}>Stores</Text>
+          <View style={styles.compactNavSpacer} />
+        </View> */}
+
+        <View style={styles.mapSearchInputWrap}>
+          {isLoading ? (
+            <View style={styles.mapLoadingPill}>
+              <ActivityIndicator color={colors.navy} size="small" />
+            </View>
+          ) : null}
+          <TextInput
+            value={searchTerm}
+            onChangeText={(value) => {
+              setSearchTerm(value);
+              onSelectStore(null);
+            }}
+            placeholder="Search store name or code"
+            placeholderTextColor={colors.muted}
+            autoCapitalize="none"
+            style={styles.mapSearchInput}
+          />
+          {searchTerm || selectedStore ? (
+            <Pressable
+              style={styles.mapSearchClear}
+              onPress={resetMapView}
+            >
+              <Text style={styles.mapSearchClearText}>Clear</Text>
+            </Pressable>
+          ) : null}
+        </View>
 
         {matchingStores.length > 0 ? (
           <View style={styles.mapSearchResults}>
@@ -417,32 +456,34 @@ export function StoreMapScreen({
             </Text>
           </Pressable>
         </View>
-      </View>
 
-      {viewMode === "list" ? (
-        <ScrollView contentContainerStyle={styles.storeListContent}>
-          <View style={styles.statusFilterRow}>
-            {["all", "covered", "nonVisited", "deviation", "rejected"].map((status) => (
+        {viewMode === "list" ? (
+          <View style={styles.storeStatusFilterRow}>
+            {["all", "covered", "deviation"].map((status) => (
               <Pressable
                 key={status}
                 style={[
-                  styles.statusFilterChip,
-                  statusFilter === status ? styles.statusFilterChipActive : null,
+                  styles.storeStatusFilterChip,
+                  storeStatusFilter === status ? styles.storeStatusFilterChipActive : null,
                 ]}
-                onPress={() => setStatusFilter(status)}
+                onPress={() => setStoreStatusFilter(status)}
               >
                 <Text
                   style={[
-                    styles.statusFilterText,
-                    statusFilter === status ? styles.statusFilterTextActive : null,
+                    styles.storeStatusFilterText,
+                    storeStatusFilter === status ? styles.storeStatusFilterTextActive : null,
                   ]}
                 >
-                  {statusLabel(status)}
+                  {storeStatusFilterLabel(status)}
                 </Text>
               </Pressable>
             ))}
           </View>
+        ) : null}
+      </View>
 
+      {viewMode === "list" ? (
+        <ScrollView contentContainerStyle={styles.storeListContent}>
           {isLoading ? (
             <View style={styles.inlineState}>
               <ActivityIndicator color={colors.navy} />
@@ -453,41 +494,11 @@ export function StoreMapScreen({
           {filteredStores.length > 0 ? (
             <View style={styles.storeCardList}>
               {filteredStores.map((store, index) => (
-                <Pressable
+                <StoreListCard
                   key={`${store.storeCode}-${store.visitDate}-${index}`}
-                  style={styles.storeCard}
-                  onPress={() => onOpenStoreDetail?.(store)}
-                >
-                  <View style={styles.storeRow}>
-                    <View style={styles.merchTitleBlock}>
-                      <Text style={styles.merchName} numberOfLines={1}>
-                        {store.storeName || "Unknown store"}
-                      </Text>
-                      <Text style={styles.merchCode}>
-                        {[store.storeCode, store.storeFormat].filter(Boolean).join(" - ")}
-                      </Text>
-                    </View>
-                    <View style={[styles.statusBadge, storeStatusStyle(store)]}>
-                      <Text style={styles.statusBadgeText}>{storeStatusLabel(store)}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.merchCities} numberOfLines={2}>
-                    {[store.city || store.storeCity, store.region || store.storeRegion, formatDate(store.visitDate)]
-                      .filter(Boolean)
-                      .join(" - ")}
-                  </Text>
-                  <Text style={styles.merchMetric}>
-                    {[store.username, store.supervisorName].filter(Boolean).join(" - ") || "No merchandiser"}
-                  </Text>
-                  <View style={styles.merchMetricRow}>
-                    <Text style={styles.merchMetric}>Tasks {formatPercentage(store.taskPer)}</Text>
-                    {store.reason ? (
-                      <Text style={styles.merchReasons} numberOfLines={1}>
-                        {store.reason}
-                      </Text>
-                    ) : null}
-                  </View>
-                </Pressable>
+                  store={store}
+                  onPress={() => openStoreCard(store)}
+                />
               ))}
             </View>
           ) : !isLoading ? (
@@ -552,8 +563,9 @@ export function StoreMapScreen({
             ? {
                 bottom:
                   (isStoreSheetExpanded
-                    ? STORE_SHEET_EXPANDED_HEIGHT
-                    : compactSheetHeight) + 12,
+                    ? STORE_SHEET_EXPANDED_BOTTOM_OFFSET + expandedSheetHeight
+                    : STORE_SHEET_COLLAPSED_VISIBLE_HEIGHT) +
+                  12,
               }
             : null,
         ]}
@@ -582,8 +594,7 @@ export function StoreMapScreen({
         <Animated.View
           style={[
             styles.storeSheet,
-            isStoreSheetExpanded ? styles.storeSheetExpanded : null,
-            { height: sheetHeight },
+            { bottom: sheetBottom, height: sheetHeight },
           ]}
         >
           <View style={styles.storeSheetDragArea} {...sheetPanResponder.panHandlers}>
@@ -593,114 +604,72 @@ export function StoreMapScreen({
             >
               <View style={styles.sheetHandle} />
             </Pressable>
-            <View style={styles.storeSheetHeader}>
-              <View style={styles.storeSheetTitleBlock}>
-                <Text
-                  style={styles.sheetTitle}
-                  numberOfLines={2}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.86}
-                >
-                  {selectedStore.storeName}
-                </Text>
-                <Text style={styles.storeCodeText}>{selectedStore.storeCode}</Text>
-              </View>
-              <View
-                style={[
-                  styles.statusPill,
-                  Number(storeDetails?.coverageRatePercentage) >= 90
-                    ? styles.statusPillGood
-                    : Number(storeDetails?.coverageRatePercentage) > 0
-                      ? styles.statusPillWarning
-                      : styles.statusPillMuted,
-                ]}
-              >
-                <Text style={styles.statusPillLabel}>Taux couverture</Text>
-                <Text style={styles.statusPillText}>
-                  {storeDetailsError
-                    ? "Unavailable"
-                    : isStoreDetailsLoading
-                      ? "Loading"
-                      : formatPercentage(storeDetails?.coverageRatePercentage)}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.osaBlock}>
-            <View>
-              <Text style={styles.storeMetricLabel}>OSA</Text>
-              <Text style={styles.osaValue}>
-                {isStoreDetailsLoading
-                  ? "..."
-                  : formatPercentage(storeDetails?.osaPercentage)}
-              </Text>
-            </View>
-            <View style={styles.osaTrack}>
-              <View
-                style={[
-                  styles.osaFill,
-                  {
-                    width: `${Math.max(
-                      0,
-                      Math.min(100, Number(storeDetails?.osaPercentage) || 0)
-                    )}%`,
-                  },
-                ]}
-              />
-            </View>
           </View>
 
           <Animated.View
             pointerEvents={isStoreSheetExpanded ? "auto" : "none"}
-            style={[
-              styles.storeDetailsPanel,
-              { height: sheetDetailsHeight, opacity: sheetDetailsOpacity },
-            ]}
+            style={[styles.storeSheetContentWrap, { opacity: sheetContentOpacity }]}
           >
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.storeDetailsScrollContent}
+              contentContainerStyle={styles.storeSheetScrollContent}
             >
-              {storeDetailsError ? (
-                <Text style={styles.storeDetailsError}>{storeDetailsError}</Text>
-              ) : null}
+              <View style={styles.storeSheetMeasuredContent} onLayout={handleSheetContentLayout}>
+                <View style={styles.storeSheetHeader}>
+                  <View style={styles.storeSheetTitleBlock}>
+                    <Text
+                      style={styles.sheetTitle}
+                      numberOfLines={2}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.86}
+                    >
+                      {selectedStore.storeName}
+                    </Text>
+                    <Text style={styles.storeCodeText}>{selectedStore.storeCode}</Text>
+                    <Text style={styles.storeSheetMetaText} numberOfLines={2}>
+                      {[selectedStoreDetails.storeFormat, selectedStoreCity, selectedStoreRegion]
+                        .filter(Boolean)
+                        .join(" - ") || "--"}
+                    </Text>
+                  </View>
+                </View>
 
-              <View style={styles.storeMetricGrid}>
-                <Text style={styles.storeDetailsSectionTitle}>Visit information</Text>
-                <StoreMetric label="City" value={selectedStore.storeCity || "Not available"} />
-                <StoreMetric
-                  label="Monthly visits"
-                  value={formatNumber(storeDetails?.monthlyVisitCount)}
-                />
-                <StoreMetric
-                  label="Last visit"
-                  value={formatDate(storeDetails?.lastVisitDate)}
-                />
-                <StoreMetric
-                  label="Merchandiser"
-                  value={merchandiserLabel}
-                />
-                <StoreMetric
-                  label="Deviation"
-                  value={
-                    selectedStore.deviation
-                      ? "Yes"
-                      : formatPercentage(storeDetails?.deviationPercentage)
-                  }
-                />
-                <StoreMetric
-                  label="Status"
-                  value={selectedStore.callStatus || storeDetails?.coverageStatus || "Not available"}
-                />
-                <StoreMetric
-                  label="Task completion"
-                  value={formatPercentage(selectedStore.taskPer)}
-                />
-                <StoreMetric
-                  label="Reason"
-                  value={selectedStore.reason || "Not available"}
-                />
+                <View style={styles.storeSheetSummary}>
+                  <View style={styles.storeSheetInfoStack}>
+                    <StoreSheetInfoRow
+                      label="Channel"
+                      value={formatChannelLabel(selectedStoreDetails.storeFormat)}
+                    />
+                    <StoreSheetInfoRow
+                      label="Status"
+                      value={selectedStoreHasDeviation ? "Deviation" : "Covered"}
+                      tone={selectedStoreHasDeviation ? "warning" : "success"}
+                    />
+                    <StoreSheetInfoRow
+                      label="Monthly visits"
+                      value={formatCount(selectedStoreDetails.monthlyVisitCount)}
+                    />
+                    <StoreSheetInfoRow
+                      label="Latest visit"
+                      value={formatSafeDate(selectedStoreDate)}
+                    />
+                    <StoreSheetInfoRow
+                      label="Merchandiser"
+                      value={selectedStoreMerchandiser || "--"}
+                    />
+                  </View>
+                  {selectedStoreDeviationReason ? (
+                    <Text style={styles.storeSheetReasonText} numberOfLines={2}>
+                      Reason: {selectedStoreDeviationReason}
+                    </Text>
+                  ) : null}
+                  <Pressable
+                    style={styles.storeSheetActionButton}
+                    onPress={openSelectedStoreExecution}
+                  >
+                    <Text style={styles.storeSheetActionText}>View details</Text>
+                  </Pressable>
+                </View>
               </View>
             </ScrollView>
           </Animated.View>
@@ -710,29 +679,120 @@ export function StoreMapScreen({
   );
 }
 
-function getStoreStatusKey(store) {
-  if (store?.rejection) return "rejected";
-  if (store?.deviation) return "deviation";
-  if (store?.notVisited) return "nonVisited";
-  return "covered";
+function StoreSheetInfoRow({ label, tone, value }) {
+  return (
+    <View style={styles.storeSheetInfoRow}>
+      <Text style={styles.storeSheetInfoLabel}>{label}</Text>
+      {tone ? (
+        <StoreBadge label={value} tone={tone} />
+      ) : (
+        <Text style={styles.storeSheetInfoValue} numberOfLines={1}>
+          {value}
+        </Text>
+      )}
+    </View>
+  );
 }
 
-function storeStatusLabel(store) {
-  return statusLabel(getStoreStatusKey(store));
+function StoreListCard({ onPress, store }) {
+  const city = store.city || store.storeCity;
+  const region = store.region || store.storeRegion;
+  const visitDate = store.latestVisitDate || store.visitDate;
+  const merchandiser = store.merchandiserName || store.username;
+  const supervisor = store.supervisorName;
+  const hasDeviation = hasStoreDeviation(store);
+  const hasVisit = Boolean(getStoreVisitId(store));
+
+  return (
+    <Pressable style={styles.storeListCard} onPress={onPress}>
+      <Text style={styles.storeListCardTitle} numberOfLines={1}>
+        {store.storeName || "Unknown store"}
+      </Text>
+      <Text style={styles.storeListCardSubtitle} numberOfLines={1}>
+        {[store.storeCode, store.storeFormat].filter(Boolean).join(" - ") || "--"}
+      </Text>
+      <Text style={styles.storeListCardMeta} numberOfLines={2}>
+        {[city, region, formatSafeDate(visitDate)].filter(isPresent).join(" - ") || "--"}
+      </Text>
+      <View style={styles.storeListChipRow}>
+        <StoreBadge label={formatChannelLabel(store.storeFormat)} />
+        <StoreBadge
+          label={hasDeviation ? "Deviation" : "Covered"}
+          tone={hasDeviation ? "warning" : "success"}
+        />
+        <StoreBadge label={`Monthly visits: ${formatCount(store.monthlyVisitCount)}`} />
+      </View>
+      <Text style={styles.storeListAssignmentText} numberOfLines={1}>
+        {[merchandiser, supervisor].filter(isPresent).join(" - ") || "--"}
+      </Text>
+      <Text style={[styles.storeListActionText, !hasVisit ? styles.storeListActionTextMuted : null]}>
+        {hasVisit ? "View details" : "No execution available"}
+      </Text>
+    </Pressable>
+  );
 }
 
-function statusLabel(status) {
-  if (status === "nonVisited") return "Non Visited";
-  if (status === "deviation") return "Deviation";
-  if (status === "rejected") return "Rejected";
+function StoreBadge({ label, tone }) {
+  return (
+    <View
+      style={[
+        styles.storeBadge,
+        tone === "success" ? styles.storeBadgeSuccess : null,
+        tone === "warning" ? styles.storeBadgeWarning : null,
+      ]}
+    >
+      <Text
+        style={[
+          styles.storeBadgeText,
+          tone === "success" ? styles.storeBadgeTextSuccess : null,
+          tone === "warning" ? styles.storeBadgeTextWarning : null,
+        ]}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function formatSafeDate(value) {
+  if (!value) {
+    return "--";
+  }
+
+  return formatDate(value);
+}
+
+function formatCount(value) {
+  const numericValue = Number(value);
+  if (Number.isNaN(numericValue)) {
+    return "0";
+  }
+
+  return String(numericValue);
+}
+
+function formatChannelLabel(format) {
+  if (!format) {
+    return "--";
+  }
+
+  return String(format).trim().toUpperCase() === "GROCERY" ? "GT" : "MT";
+}
+
+function getStoreVisitId(store) {
+  return store?.latestVisitId || store?.visitId;
+}
+
+function hasStoreDeviation(store) {
+  return Boolean(store?.hasDeviation ?? store?.deviation);
+}
+
+function storeStatusFilterLabel(status) {
   if (status === "covered") return "Covered";
+  if (status === "deviation") return "Deviation";
   return "All";
 }
 
-function storeStatusStyle(store) {
-  const status = getStoreStatusKey(store);
-  if (status === "nonVisited") return styles.statusBadgeNonVisited;
-  if (status === "deviation") return styles.statusBadgeDeviation;
-  if (status === "rejected") return styles.statusBadgeRejected;
-  return styles.statusBadgeCovered;
+function isPresent(value) {
+  return value !== null && value !== undefined && String(value).trim() !== "";
 }

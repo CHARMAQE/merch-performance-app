@@ -38,7 +38,8 @@ public class BackofficeValidationController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "50") Integer limit
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) Integer size
     ) {
         try {
             return validationService.listIssues(
@@ -50,7 +51,7 @@ public class BackofficeValidationController {
                     startDate,
                     endDate,
                     page,
-                    limit
+                    limit == null ? size : limit
             );
         } catch (IllegalArgumentException exc) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exc.getMessage(), exc);

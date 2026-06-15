@@ -2,25 +2,19 @@
 
 \section{Introduction}
 
-Ce chapitre présente l’état de l’existant relatif au suivi des opérations terrain du projet Unilever. Il décrit le fonctionnement actuel du processus de reporting, les principales sources de données exploitées, ainsi que les rapports produits à partir des exports issus de la plateforme Smollan.
+Ce chapitre présente l’état de l’existant relatif au suivi des opérations terrain du projet Unilever. Il introduit les notions métier nécessaires à la compréhension du contexte, notamment le merchandising terrain, les indicateurs de suivi opérationnel et l’exploitation des données issues des visites en magasin.
 
-Il introduit également les notions nécessaires à la compréhension du contexte métier, notamment le merchandising terrain, les indicateurs de suivi opérationnel et l’exploitation des données issues des visites en magasin. Cette présentation permet de situer les données utilisées dans leur environnement réel avant d’analyser les limites du fonctionnement actuel.
-
-L’objectif de ce chapitre est d’identifier les difficultés rencontrées dans l’exploitation des données terrain et de dégager les besoins auxquels la solution proposée doit répondre. Cette analyse constitue une étape de transition entre le cadrage général du projet et la conception de la solution retenue.
+Il décrit ensuite le processus actuel de reporting, les principales sources exploitées, ainsi que les limites rencontrées dans l’utilisation des fichiers \textit{Data Dump} et \textit{Coverage}. Cette analyse permet de dégager les besoins fonctionnels et techniques auxquels la solution proposée doit répondre.
 
 \section{Cadre théorique du projet}
 
-\subsection{Merchandising terrain et exécution en point de vente}
+\subsection{Merchandising terrain, exécution et indicateurs de suivi}
 
-Le merchandising terrain désigne l’ensemble des actions réalisées en magasin afin d’assurer une bonne présentation des produits et une exécution conforme aux standards définis. Il concerne notamment la disponibilité des produits, leur visibilité en rayon, leur placement, la qualité d’exécution et le respect des consignes commerciales.
+Le merchandising terrain désigne l’ensemble des actions réalisées en magasin afin d’assurer la disponibilité, la visibilité, le placement et la bonne présentation des produits selon les standards définis par la marque.
 
-Dans le cadre des opérations suivies par Smollan, ces actions sont réalisées par des merchandisers lors des visites en point de vente. Les informations collectées peuvent inclure les réponses aux tâches, les photos justificatives, les relevés liés aux produits, les données de localisation et les éléments nécessaires au reporting. Ces données permettent de vérifier l’état réel de l’exécution terrain et d’alimenter les analyses opérationnelles.
+Dans le cadre des opérations suivies par Smollan, ces actions sont réalisées par des merchandisers lors des visites en point de vente. Les informations collectées concernent notamment les réponses aux tâches, les photos justificatives, les relevés produits, les données de localisation et les éléments nécessaires au reporting.
 
-\subsection{Indicateurs de suivi opérationnel}
-
-Le pilotage des opérations de merchandising terrain repose sur plusieurs indicateurs permettant de mesurer l’avancement des visites, la qualité de l’exécution en magasin et la disponibilité des produits. Dans le cadre du projet Unilever, ces indicateurs sont utilisés pour le suivi interne des opérations, la préparation des reportings destinés au client et l’identification des situations nécessitant une vérification.
-
-%====================================================
+Le pilotage de ces opérations repose sur plusieurs indicateurs permettant de mesurer l’avancement des visites, la qualité de l’exécution et la disponibilité des produits. Les principaux indicateurs utilisés dans le cadre du projet Unilever sont présentés ci-dessous.
 
 \subsubsection{Taux de couverture}
 
@@ -40,15 +34,15 @@ La formulation mathématique du taux de couverture est donnée par :
 où :
 
 \begin{itemize}
-    \item $N_{\mathrm{executed\_visits}}$ représente le nombre de visites réellement exécutées ;
+    \item $N_{\mathrm{executed\_visits}}$ représente le nombre de visites réellement exécutées.
     \item $N_{\mathrm{planned\_visits}}$ représente le nombre de visites prévues dans le plan de couverture.
 \end{itemize}
 
 Un faible taux de couverture peut traduire généralement :
 
 \begin{itemize}
-    \item des magasins planifiés mais non visités ;
-    \item des contraintes terrain ou organisationnelles ;
+    \item des magasins planifiés mais non visités.
+    \item des contraintes terrain ou organisationnelles.
     \item un écart entre le planning prévu et l’exécution réelle.
 \end{itemize}
 
@@ -72,15 +66,15 @@ La formulation mathématique du taux de déviation est donnée par :
 où :
 
 \begin{itemize}
-    \item $N_{\mathrm{deviation\_visits}}$ représente le nombre de visites signalées en déviation ;
+    \item $N_{\mathrm{deviation\_visits}}$ représente le nombre de visites signalées en déviation.
     \item $N_{\mathrm{planned\_visits}}$ représente le nombre total de visites planifiées.
 \end{itemize}
 
 Une augmentation du taux de déviation peut indiquer :
 
 \begin{itemize}
-    \item un écart entre la planification et l’exécution terrain ;
-    \item des visites nécessitant une justification ;
+    \item un écart entre la planification et l’exécution terrain.
+    \item des visites nécessitant une justification.
     \item un besoin de suivi opérationnel par les équipes internes.
 \end{itemize}
 
@@ -102,15 +96,15 @@ La formulation mathématique du taux de rejet est donnée par :
 où :
 
 \begin{itemize}
-    \item $N_{\mathrm{rejected\_visits}}$ représente le nombre de visites rejetées ;
+    \item $N_{\mathrm{rejected\_visits}}$ représente le nombre de visites rejetées.
     \item $N_{\mathrm{executed\_visits}}$ représente le nombre total de visites exécutées.
 \end{itemize}
 
 Un taux de rejet élevé peut traduire généralement :
 
 \begin{itemize}
-    \item des problèmes dans la qualité des informations saisies ;
-    \item des visites nécessitant une correction ou une justification ;
+    \item des problèmes dans la qualité des informations saisies.
+    \item des visites nécessitant une correction ou une justification.
     \item un besoin de validation ou de contrôle interne plus approfondi.
 \end{itemize}
 
@@ -134,15 +128,15 @@ La formulation mathématique de l’OSA est donnée par :
 où :
 
 \begin{itemize}
-    \item $N_{\mathrm{available\_products}}$ représente le nombre de produits disponibles en rayon ;
+    \item $N_{\mathrm{available\_products}}$ représente le nombre de produits disponibles en rayon.
     \item $N_{\mathrm{checked\_products}}$ représente le nombre total de produits contrôlés.
 \end{itemize}
 
 Un faible niveau d’OSA peut traduire généralement :
 
 \begin{itemize}
-    \item une rupture ou une absence de produit en rayon ;
-    \item une exécution non conforme au niveau du point de vente ;
+    \item une rupture ou une absence de produit en rayon.
+    \item une exécution non conforme au niveau du point de vente.
     \item une situation nécessitant une analyse ou une action corrective.
 \end{itemize}
 
@@ -164,15 +158,15 @@ La formulation mathématique du SOS est donnée par :
 où :
 
 \begin{itemize}
-    \item $\mathrm{ShelfSpace}_{\mathrm{brand}}$ représente l’espace occupé par la marque ;
+    \item $\mathrm{ShelfSpace}_{\mathrm{brand}}$ représente l’espace occupé par la marque.
     \item $\mathrm{ShelfSpace}_{\mathrm{category}}$ représente l’espace total de la catégorie.
 \end{itemize}
 
 Une amélioration du SOS peut contribuer à :
 
 \begin{itemize}
-    \item renforcer la visibilité des produits en rayon ;
-    \item améliorer la présence de la marque dans la catégorie ;
+    \item renforcer la visibilité des produits en rayon.
+    \item améliorer la présence de la marque dans la catégorie.
     \item soutenir l’analyse de la qualité d’exécution en magasin.
 \end{itemize}
 
@@ -187,8 +181,8 @@ Le placement primaire correspond à l’emplacement principal du produit dans le
 Le respect du planogramme et des placements permet généralement :
 
 \begin{itemize}
-    \item d’assurer une présentation cohérente des produits ;
-    \item d’améliorer la visibilité en point de vente ;
+    \item d’assurer une présentation cohérente des produits.
+    \item d’améliorer la visibilité en point de vente.
     \item de vérifier la conformité de l’exécution terrain avec les standards attendus.
 \end{itemize}
 
@@ -196,149 +190,96 @@ Dans le cadre du projet, ces informations sont principalement exploitées à par
 
 %====================================================
 
-\subsubsection{Taux de complétion des tâches}
-
-Le taux de complétion des tâches permet d’évaluer la part des tâches effectivement renseignées par rapport aux tâches attendues lors d’une visite. Il donne une indication sur le niveau de complétude des informations collectées par les merchandisers.
-
-La formulation mathématique du taux de complétion des tâches est donnée par :
-
-\[
-\mathrm{Task\ Completion\ Rate} =
-\frac{N_{\mathrm{completed\_tasks}}}
-{N_{\mathrm{expected\_tasks}}}
-\times 100
-\]
-
-où :
-
-\begin{itemize}
-    \item $N_{\mathrm{completed\_tasks}}$ représente le nombre de tâches réalisées ou renseignées ;
-    \item $N_{\mathrm{expected\_tasks}}$ représente le nombre total de tâches attendues.
-\end{itemize}
-
-Un faible taux de complétion peut indiquer :
-
-\begin{itemize}
-    \item des informations terrain incomplètes ;
-    \item des tâches non renseignées lors de la visite ;
-    \item une difficulté à produire des indicateurs fiables pour le suivi et l’analyse.
-\end{itemize}
-
-Ainsi, les indicateurs de suivi opérationnel permettent de dépasser la simple mesure du nombre de visites réalisées. Ils offrent une lecture plus complète de l’exécution terrain, en combinant l’avancement des visites, la disponibilité produit, la visibilité en rayon, la conformité merchandising et la qualité des données collectées.
-
 \subsection{Exploitation des données terrain}
 
-Les données terrain ne peuvent pas être exploitées efficacement lorsqu’elles restent dispersées dans plusieurs fichiers ou rapports séparés. Avant leur utilisation dans des tableaux de bord ou dans des interfaces de consultation, elles doivent être nettoyées, structurées et centralisées dans un modèle cohérent.
+Les données terrain doivent être nettoyées, structurées et centralisées avant d’être exploitées dans des tableaux de bord ou des interfaces de consultation. Cette centralisation permet de rapprocher les informations issues des différentes sources, de conserver un historique exploitable et de produire des indicateurs plus fiables.
 
-Cette centralisation permet de conserver un historique exploitable, de rapprocher les informations issues de différentes sources et de produire des indicateurs fiables. Elle facilite également la distinction entre les usages internes et les usages orientés client. Les tableaux de bord servent au pilotage et à l’analyse, les interfaces de consultation permettent un accès ciblé aux informations par les utilisateurs concernés, tandis que le portail back-office reste destiné aux validations et contrôles internes.
+Dans ce contexte, l’exploitation des données ne se limite pas au reporting. Elle s’inscrit dans une logique d’aide à la décision, où les constats opérationnels sont appuyés par des données mesurables.
 
-Après avoir présenté ces notions générales, il convient d’analyser le fonctionnement actuel du suivi opérationnel afin d’identifier les limites auxquelles la solution proposée doit répondre.
-\section{Processus actuel de suivi opérationnel}
+\subsection{Approche data-driven et prise de décision}
 
-Dans le cadre du projet Unilever, le suivi des activités terrain repose initialement sur les données issues de la plateforme opérationnelle utilisée par Smollan. Les merchandisers réalisent leurs visites à travers l’application terrain, dans laquelle ils renseignent les informations liées à l’exécution en magasin : présence au point de vente, tâches réalisées, réponses aux questionnaires, disponibilité des produits, éléments de qualité, photos justificatives et données de localisation.
+Une approche \textit{data-driven} consiste à appuyer la compréhension d’une situation et la prise de décision sur des données collectées, préparées et analysées, plutôt que sur des impressions ou des jugements isolés. Dans cette logique, les décisions doivent être orientées par des faits mesurables, des indicateurs fiables et des résultats observables. Cette approche est souvent associée aux démarches de Data Science et de Business Intelligence, qui visent à transformer les données brutes en informations exploitables pour l’action \cite{provost-fawcett-2013}.
 
-Le processus actuel s’appuie principalement sur l’extraction quotidienne de fichiers Excel depuis la plateforme Smollan. Ces exports permettent de suivre l’activité de la veille ou d’une période sélectionnée. Les deux fichiers les plus importants dans ce processus sont le fichier \textit{Data Dump} et le fichier \textit{Coverage}. Le premier regroupe les détails d’exécution saisis sur le terrain, tandis que le second apporte une vision plus opérationnelle de la couverture, des visites planifiées, des visites réalisées, des visites adhoc, des rejets, des déviations et des magasins non visités.
-
-Ces fichiers sont exploités pour produire différents reportings. Certains sont orientés vers le suivi interne, notamment les rapports de couverture, de déviation, de visites rejetées et de magasins non visités. D’autres sont destinés au client Unilever, comme le suivi OSA transmis quotidiennement, ainsi que des reportings plus spécifiques ou périodiques liés à la qualité d’exécution, au SOS, au placement en rayon ou à d’autres indicateurs terrain. Ces reportings permettent de suivre l’état d’avancement des opérations, d’analyser la disponibilité des produits, d’identifier les magasins nécessitant un suivi particulier et de faciliter les actions de suivi.
-
-Ce processus permet d’assurer un suivi quotidien des opérations. Toutefois, il reste fortement dépendant des exports Excel et de traitements séparés. Les informations nécessaires à l’analyse sont présentes, mais elles sont dispersées entre plusieurs fichiers et rapports. De plus, le fichier Data Dump ne suffit pas à lui seul pour reconstituer toute la situation opérationnelle, car certaines informations liées aux visites planifiées, non réalisées ou rejetées sont principalement disponibles dans le fichier Coverage. Cette situation rend plus difficile la constitution d’un historique structuré, l’accès rapide aux détails d’exécution d’un magasin et la mise en place d’indicateurs consolidés pour le pilotage opérationnel.
-
-
-La figure suivante présente une vue simplifiée du processus actuel de reporting, depuis la saisie des informations terrain dans l'application Smart 3 jusqu'à la production des rapports internes et des reportings destinés au client Unilever.
+La figure suivante présente une vue synthétique des principales étapes d’une démarche data-driven, depuis la définition des objectifs jusqu’à l’amélioration continue des actions.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.65\textwidth]{figures/architecture/Processus_actuel_de_suivi_opérationnel.png}
+    \includegraphics[width=0.60\textwidth]{figures/technologies/approche_data_driven.png}
+    \caption{Principes d’une approche data-driven}
+    \label{fig:approche_data_driven}
+\end{figure}
+
+Comme le montre cette figure, une démarche data-driven suit une logique progressive : définir les objectifs, collecter les données, les préparer, les analyser, puis utiliser les résultats pour orienter les décisions. Cette logique permet de passer d’une lecture basée sur des fichiers séparés à une lecture structurée, appuyée sur des faits mesurables.
+
+\section{Processus actuel de suivi opérationnel}
+
+Dans le cadre du projet Unilever, les merchandisers réalisent leurs visites à travers l’application Smart 3. Lors de chaque passage en magasin, ils renseignent les informations liées à l’exécution terrain : tâches réalisées, réponses aux questionnaires, disponibilité des produits, photos justificatives et données de localisation.
+
+Le suivi opérationnel repose ensuite sur l’extraction quotidienne de fichiers Excel depuis le portail Smollan. Deux fichiers occupent une place centrale dans ce processus : le \textit{Data Dump}, qui contient le détail des réponses terrain, et le \textit{Coverage}, qui permet de suivre les visites planifiées, réalisées, Adhoc, rejetées, en déviation ou non effectuées. Ces fichiers alimentent à la fois les rapports internes de suivi et les reportings destinés au client Unilever.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.72\textwidth]{figures/architecture/Processus_actuel_de_suivi_opérationnel.png}
     \caption{Processus actuel de reporting merchandising basé sur Smart 3 et les exports Excel}
     \label{fig:current-reporting-process}
 \end{figure}
 
-Cette figure montre que les exports issus du portail Smollan constituent le point de départ de plusieurs usages. Les rapports internes sont principalement orientés vers le suivi opérationnel, notamment la couverture, les déviations, les rejets et les justifications terrain. Les reportings destinés au client Unilever sont davantage orientés vers la disponibilité produit, la qualité d’exécution, le SOS, le planogramme et les analyses hebdomadaires ou mensuelles.
+Ce processus permet d’assurer un suivi quotidien des opérations, mais il reste dépendant des exports Excel et de traitements séparés. Les informations sont disponibles, mais dispersées entre plusieurs fichiers, ce qui rend plus difficile la constitution d’un historique centralisé, l’accès rapide aux détails d’un magasin et la production d’indicateurs consolidés.
 
 \section{Sources de données exploitées}
 
+Le suivi du projet Unilever repose principalement sur deux fichiers exportés depuis le portail Smollan : le fichier \textit{Data Dump} et le fichier \textit{Coverage}. Ces deux sources sont complémentaires, car elles permettent de relier le détail de l’exécution terrain au statut opérationnel des visites.
+
 \subsection{Fichier Data Dump}
 
-Le fichier \textit{Data Dump} constitue la source principale des données détaillées issues de l’exécution terrain. Il contient les réponses renseignées par les merchandisers lors de leurs visites en magasin, ainsi que les informations associées aux tâches exécutées.
+Le fichier \textit{Data Dump} contient les données détaillées renseignées par les merchandisers lors des visites en magasin. Il regroupe notamment les tâches exécutées, les questions posées, les réponses saisies, les produits, les magasins, les dates d’exécution, les coordonnées de localisation et, dans certains cas, les photos justificatives.
 
-Ce fichier regroupe notamment les données relatives aux merchandisers, aux magasins, aux produits, aux catégories, aux tâches, aux questions posées et aux réponses saisies. Il contient également des informations liées aux dates d’exécution, aux coordonnées de localisation collectées par l’application terrain et, dans certains cas, aux liens vers les photos justificatives.
-
-Dans le cadre du projet, le \textit{Data Dump} permet d’analyser plusieurs dimensions de l’exécution merchandising, telles que l’OSA, la qualité d’exécution, le placement primaire, le placement secondaire, le SOS, les relevés de prix, les conditions magasin ainsi que les opérations de check-in et check-out. Il représente donc une source riche pour comprendre ce qui a été réellement renseigné sur le terrain.
-
-Toutefois, cette richesse s’accompagne d’une certaine complexité. Les données sont organisées sous forme de lignes de réponses, avec des tâches, des questions et des formats variables selon les cas. Cette structure nécessite un traitement de transformation afin de construire des tables exploitables pour l’analyse, la validation et la restitution dans les tableaux de bord.
+Dans le cadre du projet, ce fichier permet d’analyser le contenu réel des visites réalisées : OSA, qualité d’exécution, placement primaire, placement secondaire, SOS, relevés de prix, ainsi que les opérations de check-in et check-out. Sa principale difficulté réside dans sa structure sous forme de lignes de réponses, qui nécessite un travail de transformation avant exploitation.
 
 \subsection{Fichier Coverage}
 
-Le fichier \textit{Coverage} apporte une vision plus synthétique et opérationnelle de l’activité terrain. Contrairement au \textit{Data Dump}, qui décrit principalement les réponses et les tâches renseignées lors des visites, le fichier \textit{Coverage} permet de suivre l’état des visites prévues et réalisées.
+Le fichier \textit{Coverage} apporte une vision plus opérationnelle du terrain. Il permet de suivre les visites planifiées, exécutées, Adhoc, rejetées, en déviation ou non réalisées. Il contient également des informations liées aux merchandisers, aux superviseurs, aux formats de magasins, aux villes, aux régions, aux durées de visite et à certaines données de localisation.
 
-Il contient notamment les informations liées aux visites planifiées, aux visites exécutées, aux visites adhoc, aux visites rejetées, aux déviations, aux magasins non visités, aux merchandisers, aux superviseurs, aux formats de magasins, aux villes, aux régions, ainsi qu’à certaines informations de durée et de localisation.
-
-Ce fichier est essentiel pour le calcul des indicateurs opérationnels, notamment le taux de couverture, le nombre de visites exécutées, les visites non réalisées, les rejets, les déviations et l’activité des merchandisers sur une période donnée. Il permet également d’alimenter les vues de suivi utilisées dans les tableaux de bord et dans l’application mobile.
-
-Ainsi, le fichier \textit{Coverage} joue un rôle central dans la compréhension de l’état d’avancement du terrain, car il permet de relier la planification des visites à leur réalisation effective.
+Ce fichier est essentiel pour calculer les indicateurs de suivi, notamment le taux de couverture, les visites exécutées, les magasins non visités, les rejets, les déviations et l’activité des merchandisers sur une période donnée.
 
 \subsection{Complémentarité Data Dump / Coverage}
 
-Les fichiers \textit{Data Dump} et \textit{Coverage} sont complémentaires. Le \textit{Data Dump} permet d’analyser le contenu détaillé des visites exécutées, tandis que le \textit{Coverage} permet de reconstituer la vision opérationnelle globale des visites planifiées, réalisées, rejetées ou non effectuées.
-
-Cette complémentarité est importante, car l’analyse de l’exécution terrain ne peut pas reposer uniquement sur les réponses détaillées des tâches. Par exemple, un magasin non visité ou une visite rejetée peut ne pas disposer du même niveau de détail dans le \textit{Data Dump}, alors que ces informations sont indispensables pour le suivi opérationnel. Le fichier \textit{Coverage} permet donc de compléter cette lecture en apportant le statut des visites et les informations de couverture.
-
-Dans le cadre de la solution proposée, l’exploitation conjointe de ces deux sources permet de construire une base de données plus cohérente. Les données détaillées issues du \textit{Data Dump} alimentent les tables de tâches et les réponses normalisées, tandis que les données du \textit{Coverage} alimentent les indicateurs de suivi opérationnel. Cette approche permet d’obtenir une vision à la fois détaillée et globale des activités terrain.
-
-Le tableau suivant synthétise le rôle de chaque source dans la solution proposée.
+Le \textit{Data Dump} permet de comprendre ce qui a été renseigné pendant la visite, tandis que le \textit{Coverage} permet de comprendre le statut global de la visite. L’exploitation conjointe de ces deux fichiers est donc nécessaire pour obtenir une lecture complète des opérations terrain.
 
 \begin{table}[H]
 \centering
-\caption{Comparaison entre les fichiers Data Dump et Coverage}
-\label{tab:data-dump-coverage}
+\caption{Rôle des principales sources de données}
+\label{tab:sources-data-dump-coverage}
 \renewcommand{\arraystretch}{1.25}
 \small
-\begin{tabular}{
-|>{\raggedright\arraybackslash}p{2.8cm}
-|>{\raggedright\arraybackslash}p{4cm}
-|>{\raggedright\arraybackslash}p{4cm}
-|>{\raggedright\arraybackslash}p{4cm}|
+\begin{tabularx}{0.95\textwidth}{
+|>{\raggedright\arraybackslash}p{2.7cm}
+|>{\raggedright\arraybackslash}X
+|>{\raggedright\arraybackslash}X|
 }
 \hline
-\textbf{Fichier} & \textbf{Type d'information} & \textbf{Utilité dans le projet} & \textbf{Limite principale} \\
+\textbf{Source} & \textbf{Rôle principal} & \textbf{Limite principale} \\
 \hline
 \textit{Data Dump}
-& Données détaillées d'exécution terrain : tâches, questions, réponses, produits, photos et informations de localisation.
-& Analyse du contenu des visites réalisées : réponses OSA, qualité d'exécution, placement en rayon, SOS et autres tâches terrain.
-& Ne permet pas à lui seul de reconstituer toute la situation opérationnelle, notamment les visites non réalisées ou certains statuts de couverture. \\
+& Détail des réponses terrain, tâches, produits, photos et informations de localisation.
+& Nécessite une transformation avant analyse, car les données sont organisées sous forme de lignes de réponses. \\
 \hline
 \textit{Coverage}
-& Données de suivi opérationnel : visites planifiées, visites réalisées, visites adhoc, rejets, déviations, magasins non visités et informations de supervision.
-& Calcul des KPI de couverture, suivi de l'avancement terrain et alimentation des vues de pilotage opérationnel.
-& Ne fournit pas toujours le détail complet des réponses terrain et des tâches exécutées, principalement disponibles dans le \textit{Data Dump}. \\
+& Suivi des visites planifiées, exécutées, Adhoc, rejetées, en déviation ou non réalisées.
+& Ne contient pas toujours le détail complet des réponses terrain disponibles dans le \textit{Data Dump}. \\
 \hline
-\end{tabular}
+\end{tabularx}
 \end{table}
 
-Cette comparaison montre que les deux fichiers répondent à des besoins différents. Le \textit{Data Dump} apporte le détail de l'exécution terrain, tandis que le \textit{Coverage} permet de suivre l'état global des visites. Leur combinaison constitue donc une base nécessaire pour construire une lecture fiable des opérations.
-
+Cette complémentarité permet de passer d’une lecture dispersée des fichiers Excel vers une base de données structurée et exploitable pour le suivi opérationnel.
 
 \section{Rapports existants}
 
-Les fichiers exportés depuis la plateforme Smollan servent de base à plusieurs reportings utilisés dans le suivi des opérations terrain. Ces reportings peuvent être regroupés en deux grandes catégories : les rapports destinés au suivi interne des opérations et les rapports destinés au client Unilever.
+Les fichiers exportés depuis la plateforme Smollan alimentent plusieurs reportings utilisés pour le suivi des opérations terrain. Ces reportings se répartissent principalement entre les rapports internes, destinés au pilotage quotidien des opérations, et les rapports client, orientés vers le suivi de l’exécution merchandising du projet Unilever.
 
-\subsection{Rapports internes Smollan}
+Les rapports internes concernent notamment la couverture, les déviations, les visites rejetées et les magasins non visités. Ils permettent aux équipes Smollan de suivre l’avancement du terrain et d’identifier les situations nécessitant une justification ou une action de suivi.
 
-Les rapports internes sont principalement orientés vers le suivi opérationnel quotidien. Ils permettent de suivre l’état de couverture, les visites réalisées, les visites non effectuées, les déviations, les rejets et certains éléments liés à l’assiduité ou au temps de production. Ces rapports facilitent la lecture de l’activité terrain et permettent d’identifier les situations nécessitant un suivi opérationnel.
-
-Parmi les rapports internes les plus utilisés, on retrouve notamment les rapports de couverture et les rapports de déviation. Le rapport de couverture permet d’obtenir une vision de l’avancement des visites, tandis que le rapport de déviation met en évidence les magasins nécessitant une confirmation, une justification ou une revisite selon le contexte terrain.
-
-Ces reportings jouent donc un rôle important dans la coordination quotidienne des opérations. Toutefois, ils restent généralement produits sous forme de fichiers séparés, ce qui limite l’analyse historique et la centralisation des informations dans une seule base exploitable.
-
-\subsection{Rapports destinés au client Unilever}
-
-En parallèle des rapports internes, certaines restitutions sont destinées au client Unilever. Elles concernent principalement la qualité d’exécution en magasin, la disponibilité des produits et certains indicateurs liés à la visibilité ou à la présence des produits en rayon.
-
-Le suivi OSA constitue un exemple important de reporting client, car il permet d’analyser la disponibilité des produits dans les magasins visités. D’autres reportings, comme les rapports liés à la qualité d’exécution, au SOS, au placement en rayon ou à d’autres indicateurs terrain, peuvent être produits de manière périodique ou selon les besoins du suivi opérationnel.
-
-Ces rapports permettent au client de disposer d’une lecture sur l’exécution terrain et sur les points nécessitant une attention particulière. Cependant, comme pour les rapports internes, leur exploitation reste dépendante des fichiers sources et des traitements réalisés en amont.
-
-Le tableau suivant résume les principaux types de reportings produits à partir des fichiers opérationnels.
+Les reportings destinés au client Unilever portent davantage sur la disponibilité des produits, la qualité d’exécution, le SOS et le placement en rayon. Ils offrent une lecture orientée client de la performance en magasin, mais restent dépendants des traitements réalisés à partir des fichiers sources.
 
 \begin{table}[H]
 \centering
@@ -346,81 +287,61 @@ Le tableau suivant résume les principaux types de reportings produits à partir
 \label{tab:reportings-existants}
 \renewcommand{\arraystretch}{1.25}
 \small
-\begin{tabular}{
-|>{\raggedright\arraybackslash}p{3.2cm}
-|>{\raggedright\arraybackslash}p{3.2cm}
-|>{\raggedright\arraybackslash}p{3cm}
-|>{\raggedright\arraybackslash}p{5cm}|
+\begin{tabularx}{0.95\textwidth}{
+|>{\raggedright\arraybackslash}p{3.6cm}
+|>{\raggedright\arraybackslash}p{3.4cm}
+|>{\raggedright\arraybackslash}X|
 }
 \hline
-\textbf{Type de rapport} & \textbf{Destinataire} & \textbf{Fréquence} & \textbf{Objectif principal} \\
+\textbf{Bloc de reporting} & \textbf{Destinataire} & \textbf{Objectif principal} \\
 \hline
-Rapport de couverture
-& Suivi interne
-& Quotidienne
-& Suivre l’avancement des visites, les magasins couverts, les magasins non visités et l’état global du terrain. \\
+Rapports internes de suivi opérationnel
+& Équipes internes Smollan
+& Suivre l’avancement terrain à travers les rapports de couverture, de déviation, de rejet et de magasins non visités. \\
 \hline
-Rapport de déviation
-& Suivi interne
-& Quotidienne ou selon le besoin
-& Identifier les magasins nécessitant une confirmation, une justification ou une action de suivi. \\
-\hline
-Suivi OSA
+Reportings client Unilever
 & Client Unilever
-& Quotidienne
-& Suivre la disponibilité des produits et identifier les références non disponibles en magasin. \\
+& Suivre l’exécution merchandising à travers les indicateurs OSA, qualité, SOS et placement en rayon. \\
 \hline
-Rapports qualité, SOS et placement
-& Client Unilever
-& Périodique ou selon le besoin
-& Analyser la qualité d’exécution, la présence produit, le placement en rayon et les points nécessitant une attention particulière. \\
-\hline
-\end{tabular}
+\end{tabularx}
 \end{table}
 
-Ce tableau montre que les reportings existants répondent à des besoins complémentaires. Les rapports internes soutiennent le pilotage quotidien des opérations, tandis que les reportings destinés au client permettent de suivre la disponibilité, la qualité d’exécution et la visibilité des produits en magasin.
+Ce tableau montre que les reportings existants se répartissent entre le suivi interne des opérations et la restitution client.
 
 \section{Limites du processus actuel}
 
-Le processus actuel permet d'assurer un suivi quotidien des opérations terrain, mais il présente plusieurs limites lorsque les volumes de données augmentent et lorsque les besoins d'analyse deviennent plus avancés. La première limite concerne la dépendance aux fichiers Excel exportés depuis la plateforme. Ces fichiers restent indispensables au suivi opérationnel, mais leur exploitation sous forme de rapports séparés rend plus difficile la centralisation de l'information et la construction d'une vision historique consolidée.
+Le processus actuel permet d’assurer un suivi quotidien des opérations terrain, mais il présente plusieurs limites lorsque les volumes de données augmentent et lorsque les besoins d’analyse deviennent plus avancés. Les principales limites identifiées sont les suivantes :
 
-La deuxième limite concerne la dispersion des données entre plusieurs sources. Le fichier \textit{Data Dump} contient les détails d'exécution, tandis que le fichier \textit{Coverage} apporte les informations de couverture et de statut des visites. Cette complémentarité est nécessaire, mais elle impose un travail de rapprochement afin de produire des indicateurs fiables. Sans modèle de données centralisé, l'analyse peut devenir répétitive et dépendante de traitements manuels ou semi-automatisés.
+\begin{itemize}
+    \item \textbf{Dépendance aux fichiers Excel :} les reportings restent basés sur des exports séparés, ce qui limite la centralisation de l’information et la construction d’un historique consolidé.
+    
+    \item \textbf{Dispersion des données :} les informations nécessaires au suivi sont réparties entre le \textit{Data Dump} et le \textit{Coverage}, ce qui impose un travail de rapprochement pour produire des indicateurs fiables.
+    
+    \item \textbf{Accès limité au détail magasin :} les rapports existants donnent une vision globale, mais l’accès rapide à l’historique d’un magasin, aux tâches exécutées ou aux réponses terrain reste moins direct.
+    
+    \item \textbf{Différence des besoins utilisateurs :} les équipes internes ont besoin d’indicateurs de pilotage et de validation, tandis que les superviseurs côté client ont besoin d’une consultation ciblée sur les magasins qui leur sont affectés.
+\end{itemize}
 
-Une autre limite concerne l'accès aux détails d'exécution par magasin. Les rapports existants permettent de suivre l'état global des opérations, mais l'accès rapide à l'historique d'un magasin, aux tâches exécutées, aux réponses terrain ou aux éléments justificatifs reste moins direct. Cette situation limite la capacité à consulter facilement une vision détaillée et structurée de l'exécution terrain.
-
-Enfin, les besoins de suivi ne sont pas identiques selon les utilisateurs. Les équipes internes ont besoin d'indicateurs de pilotage, de contrôle et de validation opérationnelle, tandis que les superviseurs côté client doivent disposer d'une consultation plus ciblée sur les magasins qui leur sont affectés. Cette différence d'usage montre la nécessité de distinguer les couches de restitution : tableaux de bord BI pour le pilotage, interface de consultation client pour l’accès aux magasins affectés, et portail back-office pour le suivi interne des validations.
-
+Ces limites montrent la nécessité de mettre en place une solution centralisée, capable de structurer les données, de faciliter leur consultation et d’adapter les restitutions aux différents usages.
+ 
 \section{Besoins fonctionnels}
 
-À partir des limites identifiées dans le processus actuel, plusieurs besoins fonctionnels ont été définis afin de structurer la solution proposée. Ces besoins concernent à la fois la centralisation des données, le suivi des indicateurs opérationnels, la consultation des informations terrain et la validation interne des situations nécessitant une analyse complémentaire.
+À partir des limites identifiées, les besoins fonctionnels du projet concernent principalement la centralisation des données, le suivi des indicateurs, la consultation des informations terrain et la validation interne des situations nécessitant une analyse.
 
-Le premier besoin consiste à mettre en place une base de données centralisée capable de regrouper les informations issues des fichiers \textit{Data Dump} et \textit{Coverage}. Cette base doit permettre de conserver l'historique des données, de structurer les informations relatives aux visites, aux magasins, aux merchandisers, aux produits et aux tâches exécutées, et de faciliter leur exploitation dans les différentes couches de la solution.
+Le premier besoin consiste à regrouper les données issues des fichiers \textit{Data Dump} et \textit{Coverage} dans une base centralisée, afin de structurer l’historique des visites, des magasins, des merchandisers, des produits et des tâches exécutées. Le deuxième besoin concerne la mise à disposition de tableaux de bord décisionnels permettant de suivre l’avancement des opérations terrain et les principaux indicateurs liés à la couverture, à l’activité des merchandisers, à l’OSA, à la qualité d’exécution, au SOS et au placement en rayon.
 
-Le deuxième besoin concerne la mise à disposition de tableaux de bord décisionnels permettant de suivre l’avancement des opérations terrain et d’analyser les principaux indicateurs avant la restitution finale. Ces tableaux de bord doivent aider au pilotage interne et au management, tout en facilitant la lecture des données liées à la couverture, à l’activité des merchandisers et à certains reportings client comme l’OSA, la qualité d'exécution, le SOS ou le placement en rayon.
-
-Le troisième besoin concerne la mise en place d’une interface de consultation orientée client. Cette interface doit permettre aux superviseurs côté Unilever de consulter les magasins qui leur sont affectés. L'objectif est de leur offrir une visibilité simple et ciblée sur l'exécution terrain, les informations des magasins, les dernières visites et les détails liés aux tâches exécutées.
-
-Le quatrième besoin porte sur la mise en place d'un portail back-office interne destiné au suivi des validations opérationnelles. Ce portail doit permettre d'exploiter les résultats des règles de validation, notamment les cas liés à l'OSA, aux contrôles GPS ou à d'autres situations nécessitant une vérification. Il doit constituer un espace interne de consultation, d'analyse et, à terme, de suivi des actions correctives.
-
-Ainsi, les besoins fonctionnels du projet ne se limitent pas à la production de tableaux de bord. Ils couvrent l'ensemble de la chaîne d'exploitation de la donnée, depuis l'ingestion des fichiers jusqu'à la restitution des informations sous forme de tableaux de bord, d’interface de consultation client et de portail de validation interne.
-
+Le projet nécessite également une interface de consultation orientée client, permettant aux superviseurs d’accéder aux magasins qui leur sont affectés et aux informations d’exécution pertinentes. Enfin, un portail back-office interne est nécessaire pour suivre les validations opérationnelles, notamment les situations détectées par les contrôles OSA et GPS.
 
 \section{Besoins techniques}
 
-La mise en œuvre de la solution nécessite une architecture technique capable de traiter des fichiers Excel volumineux, de structurer les données et de les rendre exploitables par plusieurs outils. Le premier besoin technique concerne la mise en place d’un pipeline ETL développé en Python, permettant d’extraire, nettoyer, transformer et charger les données issues des fichiers \textit{Data Dump} et \textit{Coverage}.
+La mise en œuvre de la solution nécessite une architecture capable de traiter des fichiers Excel volumineux, de structurer les données et de les rendre exploitables par plusieurs outils. Le premier besoin technique concerne la mise en place d’un pipeline ETL en Python, chargé d’extraire, nettoyer, transformer et charger les données issues des fichiers \textit{Data Dump} et \textit{Coverage}.
 
-Le deuxième besoin concerne la centralisation des données dans une base MySQL. Cette base doit permettre de stocker les informations opérationnelles, les réponses terrain, les tables liées aux différentes tâches, ainsi que les indicateurs nécessaires aux tableaux de bord, aux interfaces de consultation et au portail de validation.
+Le deuxième besoin concerne la centralisation des données dans une base MySQL, afin de stocker les informations opérationnelles, les réponses terrain, les tables de tâches et les indicateurs nécessaires aux tableaux de bord et aux interfaces applicatives. La solution doit également s’appuyer sur des API REST permettant la communication entre la base de données, l’application mobile et le portail back-office.
 
-Le troisième besoin porte sur la restitution et l’intégration des données. Les tableaux de bord sont réalisés avec Power BI afin de faciliter l’analyse et le pilotage des indicateurs. Les interfaces de consultation et de validation s’appuient sur des services applicatifs permettant d’interroger la base de données et de restituer les informations nécessaires aux utilisateurs concernés.
-
-Enfin, la solution doit rester évolutive afin de permettre l’ajout progressif de nouvelles règles de validation, de nouvelles vues analytiques, de nouveaux fichiers sources comme les Masters, ainsi que des mécanismes d’authentification et de gestion des rôles plus avancés.
+Enfin, l’architecture doit rester évolutive afin de permettre l’ajout progressif de nouvelles règles de validation, de nouvelles vues analytiques, de nouvelles sources de données et de mécanismes d’authentification plus avancés.
 
 \section{Conclusion}
 
-Ce chapitre a permis d’introduire les notions nécessaires à la compréhension du projet, notamment le merchandising terrain, les indicateurs de suivi opérationnel et l’exploitation structurée des données collectées en magasin. Ces éléments théoriques ont posé le cadre métier et technique dans lequel s’inscrit la solution proposée.
+Ce chapitre a présenté le cadre métier et théorique du projet, ainsi que le fonctionnement actuel du suivi des opérations terrain du projet Unilever. L’analyse a montré que les fichiers \textit{Data Dump} et \textit{Coverage} sont complémentaires, mais que leur exploitation reste dépendante d’exports Excel, de traitements séparés et d’un rapprochement manuel des informations.
 
-L’état de l’existant a ensuite permis d’analyser le fonctionnement actuel du suivi des opérations terrain dans le cadre du projet Unilever. L’étude du processus actuel a montré que les fichiers \textit{Data Dump} et \textit{Coverage} constituent deux sources complémentaires : le premier apporte le détail de l’exécution terrain, tandis que le second permet de suivre la couverture et le statut opérationnel des visites.
-
-L’analyse des rapports existants a également mis en évidence la diversité des usages des données, entre le suivi interne des opérations et les reportings destinés au client Unilever. Malgré l’utilité de ce fonctionnement, plusieurs limites ont été identifiées, notamment la dépendance aux fichiers Excel, la dispersion des informations, la difficulté de constituer un historique centralisé et la nécessité d’adapter les restitutions selon les utilisateurs.
-
-Ces constats ont permis de définir les principaux besoins fonctionnels et techniques du projet. Ils justifient la mise en place d’une solution data-driven reposant sur une base de données centralisée, des tableaux de bord décisionnels, une interface de consultation orientée client et un portail back-office de validation interne. Le chapitre suivant présentera la conception globale de cette solution ainsi que son architecture fonctionnelle et technique.
+Ces constats justifient la mise en place d’une solution data-driven centralisée, capable de structurer l’historique, de produire des indicateurs fiables, de faciliter la consultation des données et de soutenir les validations internes. Le chapitre suivant présente la conception globale de cette solution.

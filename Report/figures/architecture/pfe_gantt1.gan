@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><project name="PFE Smollan Unilever" company="" webLink="http://" view-date="2026-02-16" view-index="0" gantt-divider-location="577" resource-divider-location="300" version="3.3.3316" locale="fr_FR">
+    <description/>
+    <view zooming-state="default:7" id="gantt-chart">
+        <field id="tpd3" name="Name" width="341" order="0"/>
+        <field id="tpd14" name="Task color" width="20" order="1"/>
+        <field id="tpd4" name="Begin date" width="95" order="1"/>
+        <field id="tpd5" name="End date" width="82" order="2"/>
+        <field id="tpd6" name="Duration" width="43" order="3"/>
+        <option id="filter.completedTasks" value="false"/>
+        <option id="filter.dueTodayTasks" value="false"/>
+        <option id="filter.overdueTasks" value="false"/>
+        <option id="filter.inProgressTodayTasks" value="false"/>
+    </view>
+    <view id="resource-table">
+        <field id="0" name="Nom" width="209" order="0"/>
+        <field id="1" name="Rôle par défaut" width="86" order="1"/>
+    </view>
+    <!-- -->
+    <calendars>
+        <day-types>
+            <day-type id="0"/>
+            <day-type id="1"/>
+            <default-week id="1" name="default" sun="1" mon="0" tue="0" wed="0" thu="0" fri="0" sat="1"/>
+            <only-show-weekends value="true"/>
+            <overriden-day-types/>
+            <days/>
+        </day-types>
+    </calendars>
+    <tasks empty-milestones="true">
+        <taskproperties>
+            <taskproperty id="tpd0" name="type" type="default" valuetype="icon"/>
+            <taskproperty id="tpd1" name="priority" type="default" valuetype="icon"/>
+            <taskproperty id="tpd2" name="info" type="default" valuetype="icon"/>
+            <taskproperty id="tpd3" name="name" type="default" valuetype="text"/>
+            <taskproperty id="tpd4" name="begindate" type="default" valuetype="date"/>
+            <taskproperty id="tpd5" name="enddate" type="default" valuetype="date"/>
+            <taskproperty id="tpd6" name="duration" type="default" valuetype="int"/>
+            <taskproperty id="tpd7" name="completion" type="default" valuetype="int"/>
+            <taskproperty id="tpd8" name="coordinator" type="default" valuetype="text"/>
+            <taskproperty id="tpd9" name="predecessorsr" type="default" valuetype="text"/>
+        </taskproperties>
+        <task id="13" uid="ae8d4d0b8a064929a1756de7918c43ca" name="Cadrage et analyse métier" meeting="false" start="2026-03-01" duration="20" complete="0" expand="true">
+            <task id="14" uid="4848937db85942a4a598fd9f87d4f46f" name="Intégration et compréhension de l’environnement" meeting="false" start="2026-03-01" duration="7" complete="0" expand="true"/>
+            <task id="15" uid="ea03b56bba97437b8f417a5c660da697" name="Analyse du processus merchandising Unilever" meeting="false" start="2026-03-06" duration="9" complete="0" expand="true"/>
+            <task id="16" uid="6a712e93b8d4479c88de4ea5ee49e7dd" name="Analyse des fichiers Data Dump et Coverage" meeting="false" start="2026-03-10" duration="11" complete="0" expand="true"/>
+        </task>
+        <task id="17" uid="0e9b01216fc5462abbcad9aadd1dc61e" name="Data Engineering et base de données" meeting="false" start="2026-03-18" duration="39" complete="0" expand="true">
+            <task id="18" uid="b993edc4921c4f17ba70df23f9f1d896" name="Conception du pipeline ETL" meeting="false" start="2026-03-18" duration="11" complete="0" expand="true"/>
+            <task id="19" uid="6e13c7628a0c4b1f835ae7356dbcc5ea" name="Traitement Data Dump et Coverage" meeting="false" start="2026-03-25" duration="19" complete="0" expand="true"/>
+            <task id="20" uid="10a8862a7ca94465b2f8b5c3b830433e" name="Structuration et chargement MySQL" meeting="false" start="2026-04-05" duration="21" complete="0" expand="true"/>
+        </task>
+        <task id="21" uid="e0e33219e6a2401c9bdd4d7e8b1b2a82" name="Système de validation métier" meeting="false" start="2026-04-15" duration="26" complete="0" expand="true">
+            <task id="22" uid="c9d66963e5774a1dbd6ea523dfdedcdd" name="Définition des règles OSA / GPS" meeting="false" start="2026-04-15" duration="8" complete="0" expand="true"/>
+            <task id="23" uid="77a857cda0824595a64a1b6f143c3a8f" name="Implémentation du moteur de validation" meeting="false" start="2026-04-20" duration="16" complete="0" expand="true"/>
+            <task id="24" uid="269e899eb7444ecab3e37fc35d1fb58e" name="Stockage et suivi des résultats de validation" meeting="false" start="2026-05-01" duration="10" complete="0" expand="true"/>
+        </task>
+        <task id="25" uid="b178121dd4d243448ae18e9eb480d87a" name="Business Intelligence et tableaux de bord" meeting="false" start="2026-05-10" duration="27" complete="0" expand="true">
+            <task id="26" uid="2680de2602e343c6b33f315e3a2317e3" name="Connexion Power BI à MySQL" meeting="false" start="2026-05-10" duration="4" complete="0" expand="true"/>
+            <task id="27" uid="8c2f191142a343dfb9f1bb3c6d86f4de" name="Préparation du modèle Power BI" meeting="false" start="2026-05-12" duration="14" complete="0" expand="true"/>
+            <task id="28" uid="e8ef05b12af7412f9dedef5aa1e3c0b4" name="Construction des tableaux de bord" meeting="false" start="2026-05-20" duration="17" complete="0" expand="true"/>
+        </task>
+        <task id="29" uid="87bf7945d7974416baba02259a19dc22" name="Développement applicatif" meeting="false" start="2026-04-20" duration="47" complete="0" expand="true">
+            <task id="32" uid="6718ad0a2f1f4ae28c3f2480fa8ceec1" name="Développement backend Spring Boot" meeting="false" start="2026-04-20" duration="26" complete="0" expand="true"/>
+            <task id="33" uid="d91308bb90b44a349829ae8124cb07c4" name="Accès mobile par superviseur" meeting="false" start="2026-05-05" duration="14" complete="0" expand="true"/>
+            <task id="30" uid="0c5142c5b07a4788839098a501eb470b" name="Application mobile Expo / React Native" meeting="false" start="2026-05-10" duration="19" complete="0" expand="true"/>
+            <task id="31" uid="6faa300c2f174759ad60832b84260edd" name="Portail back-office React" meeting="false" start="2026-05-15" duration="22" complete="0" expand="true"/>
+        </task>
+        <task id="34" uid="e951bb0f4f284ec795bbc8e564573a10" name="Tests, ajustements et rapport" meeting="false" start="2026-05-10" duration="32" complete="0" expand="true">
+            <task id="35" uid="fcdb1da517704834a6d1bce3a00d23ce" name="Vérification des APIs avec Swagger / Postman" meeting="false" start="2026-05-25" duration="12" complete="0" expand="true"/>
+            <task id="36" uid="1796bc9f87f54bb0b6c738a045ecc304" name="Tests fonctionnels et ajustements" meeting="false" start="2026-05-28" duration="14" complete="0" expand="true"/>
+            <task id="37" uid="6c1709e6034546b8a348dd9e97b92229" name="Rédaction du rapport PFE" meeting="false" start="2026-05-10" duration="32" complete="0" expand="true"/>
+            <task id="38" uid="8062f6973bcc4ac99f983b4f6e07af20" name="Préparation de la version finale" meeting="false" start="2026-06-08" duration="3" complete="0" expand="true"/>
+        </task>
+    </tasks>
+    <resources/>
+    <allocations/>
+    <vacations/>
+    <previous/>
+    <roles roleset-name="Default"/>
+</project>

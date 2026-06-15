@@ -1,0 +1,55 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage{geometry}
+\geometry{
+    left=2.5cm,
+    right=2.5cm,
+    top=2.5cm,
+    bottom=2.5cm
+}
+
+\usepackage{setspace}
+\usepackage{fontspec}
+\usepackage{polyglossia}
+
+\setdefaultlanguage{arabic}
+\setotherlanguage{english}
+
+\newfontfamily\arabicfont[Script=Arabic,Scale=1.18]{Amiri}
+\newfontfamily\englishfont{Times New Roman}
+
+\setstretch{1.15}
+\pagestyle{empty}
+
+\begin{document}
+
+\vspace*{1.2cm}
+
+\begin{center}
+\begin{minipage}{0.78\textwidth}
+\raggedleft
+{\Large\bfseries ملخص}
+\end{minipage}
+\end{center}
+
+\vspace{0.9cm}
+
+\begin{center}
+\begin{minipage}{0.78\textwidth}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+يركز هذا المشروع على تصميم حل قائم على البيانات لتتبع وتحليل عمليات التسويق الميداني الخاصة بمشروع \textenglish{Unilever} داخل شركة \textenglish{Smollan Morocco}. ينطلق العمل من عملية أولية تعتمد بشكل كبير على ملفات \textenglish{Data Dump} و \textenglish{Coverage}، وعلى معالجات \textenglish{Excel} وتقارير منفصلة.
+
+يقترح الحل تنظيم هذه المعطيات من خلال خط معالجة بيانات، ثم تخزينها في قاعدة بيانات \textenglish{MySQL} مركزية، واستغلالها عبر لوحات قيادة \textenglish{Power BI}، وتطبيق محمول موجه للاستشارة من طرف العميل، وبوابة داخلية \textenglish{back-office}. كما تم إدماج محرك للتحقق المهني لتحديد بعض الحالات التي تتطلب مراجعة داخلية، خاصة من خلال قواعد \textenglish{OSA} و \textenglish{GPS}.
+
+أظهرت النتائج أن الحل يساهم في تحسين تتبع المعالجات، وتقليص وقت إعداد البيانات، وتقديم استغلال أكثر تنظيما لمعطيات التنفيذ الميداني. وبذلك يشكل المشروع قاعدة وظيفية لتعزيز التتبع التشغيلي وتحليل بيانات التسويق الميداني في سياق مهني حقيقي.
+
+\vspace{0.8cm}
+
+\textbf{الكلمات المفتاحية:} هندسة البيانات، \textenglish{ETL}، \textenglish{MySQL}، التسويق الميداني، \textenglish{OSA}، \textenglish{GPS}، \textenglish{Power BI}، تطبيق محمول، \textenglish{back-office}، التحقق المهني.
+
+\end{minipage}
+\end{center}
+
+\end{document}

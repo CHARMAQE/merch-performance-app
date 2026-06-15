@@ -22,7 +22,6 @@ const MOROCCO_EXTENT = transformExtent(
 const MOROCCO_OVERVIEW_ZOOM = 6;
 const STORE_FOCUS_ZOOM = 17;
 const SITUATION_TABLE_LIMIT = 25;
-const OSA_MIN_SUSPICIOUS_RESPONSES = 6;
 
 const CHANNEL_OPTIONS = [
   { value: "ALL", label: "All" },
@@ -152,43 +151,19 @@ function overviewStatusLabel(row) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function getSuspiciousResponseCount(row) {
-  return Number(
-    row?.totalIssueCount ??
-      row?.suspiciousResponses ??
-      row?.issueCount ??
-      0
-  );
-}
-
-function isOsaSituationRow(row) {
-  const channel = String(row?.channel || "").toUpperCase();
-  const issueType = String(row?.mainIssueType || row?.ruleCode || "").toUpperCase();
-
-  return (
-    channel === "MT" ||
-    issueType.includes("OSA") ||
-    issueType.includes("OSA_UNUSUAL_NON")
-  );
-}
-
-function isReviewableOverviewRow(row) {
-  if (!isOsaSituationRow(row)) {
-    return true;
-  }
-
-  return (
-    getSuspiciousResponseCount(row) >= OSA_MIN_SUSPICIOUS_RESPONSES ||
-    Number(row?.osaIssueCount || 0) >= OSA_MIN_SUSPICIOUS_RESPONSES
-  );
-}
-
 function countDistinctStores(rows) {
   return new Set(
     rows
       .map((row) => String(row?.storeCode || "").trim())
       .filter(Boolean)
   ).size;
+}
+
+function sumIssueCount(rows) {
+  return rows.reduce(
+    (total, row) => total + Number(row?.totalIssueCount ?? row?.issueCount ?? 0),
+    0
+  );
 }
 
 function StoreMapPage({ username, onLogout }) {
@@ -215,7 +190,7 @@ function StoreMapPage({ username, onLogout }) {
     [problematicStores]
   );
   const reviewableProblematicRows = useMemo(
-    () => problematicRows.filter(isReviewableOverviewRow),
+    () => problematicRows,
     [problematicRows]
   );
   const channelProblematicRows = useMemo(() => {
@@ -602,7 +577,7 @@ function StoreMapPage({ username, onLogout }) {
     return String(b.visitDate || "").localeCompare(String(a.visitDate || ""));
   });
   const visibleDetectedIssueRows = detectedIssueRows.slice(0, SITUATION_TABLE_LIMIT);
-  const detectedIssueRowCount = detectedIssueRows.length;
+  const detectedIssueRowCount = sumIssueCount(detectedIssueRows);
   const mtRows = reviewableProblematicRows.filter(
     (row) => String(row?.channel || "").toUpperCase() === "MT"
   );
@@ -612,11 +587,7 @@ function StoreMapPage({ username, onLogout }) {
   const mtStoreCount = countDistinctStores(mtRows);
   const gtStoreCount = countDistinctStores(gtRows);
   const allStoreCount = countDistinctStores(reviewableProblematicRows);
-  const activeSituationCount = selectedStore
-    ? detectedIssueRows.length
-    : channelFilter === "ALL"
-      ? reviewableProblematicRows.length
-      : channelProblematicRows.length;
+  const activeSituationCount = sumIssueCount(detectedIssueRows);
   const activeStoreCount =
     channelFilter === "MT"
       ? mtStoreCount

@@ -227,7 +227,7 @@ public class BackofficeValidationService {
         List<String> conditions = new ArrayList<>();
         List<Object> params = new ArrayList<>();
 
-        conditions.add("vr.run_id = (SELECT MAX(run_id) FROM validation_run_log)");
+        conditions.add("vr.run_id = (SELECT MAX(latest_vr.run_id) FROM validation_results latest_vr)");
         addEqualsFilter(conditions, params, "vr.rule_code", ruleCode);
         addEqualsFilter(conditions, params, "vr.severity", normalizeOptionalUpper(severity));
         addEqualsFilter(conditions, params, "COALESCE(vr.review_status, 'PENDING')", normalizeOptionalReviewStatus(reviewStatus));

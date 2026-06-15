@@ -212,7 +212,7 @@ public class BackofficeStoreMapService {
         List<Object> params = new ArrayList<>();
 
         conditions.add("base.channel IN ('MT', 'GT')");
-        conditions.add("base.run_id = (SELECT MAX(run_id) FROM validation_run_log)");
+        conditions.add("base.run_id = (SELECT MAX(latest_vr.run_id) FROM validation_results latest_vr)");
         conditions.add("""
                 (
                     (base.channel = 'MT' AND base.rule_code = ?)

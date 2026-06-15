@@ -5,15 +5,11 @@ import java.time.LocalDate;
 public record MobileDashboardOverviewResponse(
         Long plannedVisits,
         Long executedVisits,
-        Long nonVisitedVisits,
         Long deviationVisits,
-        Long rejectedVisits,
-        Long problematicVisits,
         Double coverageRate,
-        Double nonVisitedRate,
         Double deviationRate,
-        Double rejectionRate,
-        Double taskCompletionRate,
+        Double osaPercentage,
+        Double sosPercentage,
         LocalDate latestVisitDate,
         Long activeMerchandisers,
         TableCounts tableCounts,
@@ -32,7 +28,6 @@ public record MobileDashboardOverviewResponse(
     public record StoreActivity(
             Long assignedStores,
             Long visitedStores,
-            Long notVisitedStores,
             Long visits,
             LocalDate latestVisitDate,
             Long plannedStores,
@@ -42,8 +37,7 @@ public record MobileDashboardOverviewResponse(
     }
 
     public record DailyReport(
-            Long activeMerchandisers,
-            Long storesRevisited
+            Long activeMerchandisers
     ) {
     }
 }

@@ -18,14 +18,23 @@
 \usepackage{caption}
 \usepackage[hidelinks]{hyperref}
 \usepackage{float}
+\usepackage{needspace}
 \usepackage{indentfirst}
 \usepackage{fancyhdr}
 \usepackage{tikz}
 % \usepackage{pdflscape}
+\usepackage[table]{xcolor}
 \usepackage[most]{tcolorbox}
-\usepackage{xcolor}
 \usepackage{amsmath}
 \usepackage{listings}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{xurl}
+
+\urlstyle{same}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}m{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}
 
 
 \lstdefinestyle{daxstyle}{
@@ -85,6 +94,8 @@
     {figures/mobile/}
     {figures/validation/}
     {figures/technologies/}
+    {figures/API/}
+    {figures/results/}
 }
 
 \setlength{\parindent}{1.25cm}
@@ -138,7 +149,7 @@
     skip=6pt
 }
 
-\renewcommand{\contentsname}{Table des matieres}
+\renewcommand{\contentsname}{Table des matières}
 \renewcommand{\listfigurename}{Liste des figures}
 \renewcommand{\listtablename}{Liste des tableaux}
 \renewcommand{\chaptername}{Chapitre}
@@ -157,6 +168,49 @@
 
 \DeclareRobustCommand{\dbtable}[1]{\textit{#1}}
 
+% =========================
+% Front matter clean style
+% =========================
+\definecolor{reportblue}{RGB}{0,90,170}
+
+\fancypagestyle{frontmatterstyle}{
+    \fancyhf{}
+    \fancyfoot[C]{\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+% Title style for Dédicaces and Remerciements
+\newcommand{\FrontTitlePersonal}[1]{
+    \vspace*{1.4cm}
+    \begin{center}
+        {\fontsize{16}{19}\selectfont\itshape #1}
+    \end{center}
+    \vspace{1.2cm}
+}
+
+
+% Title style for Résumé and Abstract
+\newcommand{\FrontTitleSummary}[1]{
+    \vspace*{0.7cm}
+    \begin{center}
+    \begin{minipage}{0.82\textwidth}
+        {\fontsize{16}{19}\selectfont\bfseries #1}
+    \end{minipage}
+    \end{center}
+    \vspace{0.65cm}
+}
+
+\newenvironment{FrontTextBlock}{
+    \begin{center}
+    \begin{minipage}{0.82\textwidth}
+    \normalfont
+    \justifying
+}{
+    \end{minipage}
+    \end{center}
+}
+
 \begin{document}
 
 \hypersetup{pageanchor=false}
@@ -167,12 +221,21 @@
 \pagenumbering{roman}
 \input{frontmatter/dedicaces}
 \clearpage
+
 \input{frontmatter/remerciements}
 \clearpage
-\input{frontmatter/resume}
+
+\input{frontmatter/resume\_fr}
 \clearpage
+
 \input{frontmatter/abstract}
 \clearpage
+
+% Résumé en arabe à intégrer sous forme de PDF pour éviter les problèmes de compilation Arabic/pdfLaTeX
+\phantomsection
+\includepdf[pages=1,pagecommand={\thispagestyle{frontmatterstyle}}]{frontmatter/resume_ar.pdf}
+\clearpage
+
 \markboth{TABLE DES MATIÈRES}{}
 \tableofcontents
 \clearpage
@@ -204,11 +267,102 @@
 \input{chapters/conclusion_generale}
 
 \clearpage
-\chapter*{Bibliographie}
+\renewcommand{\bibname}{Bibliographie}
+\phantomsection
 \addcontentsline{toc}{chapter}{Bibliographie}
-% TODO: Ajouter ici la bibliographie finale ou activer BibTeX avec references.bib.
+\markboth{BIBLIOGRAPHIE}{}
+
+\begin{thebibliography}{99}
+\sloppy
+
+\bibitem{smollan}
+Smollan.
+\textit{Retail Growth Solutions, Merchandising \& Data}.
+Disponible sur : \url{https://smollan.com/}.
+Consulté en juin 2026.
+
+\bibitem{unilever}
+Unilever.
+\textit{Unilever Global}.
+Disponible sur : \url{https://www.unilever.com/}.
+Consulté en juin 2026.
+
+\bibitem{provost-fawcett-2013}
+Provost, F. et Fawcett, T.
+\textit{Data Science and its Relationship to Big Data and Data-Driven Decision Making}.
+Big Data, 1(1), 51--59, 2013.
+DOI : \url{https://doi.org/10.1089/big.2013.1508}.
+
+\bibitem{python-doc}
+Python Software Foundation.
+\textit{Python 3 Documentation}.
+Disponible sur : \url{https://docs.python.org/3/}.
+Consulté en juin 2026.
+
+\bibitem{pandas-doc}
+The pandas development team.
+\textit{pandas Documentation}.
+Disponible sur : \url{https://pandas.pydata.org/docs/}.
+Consulté en juin 2026.
+
+\bibitem{openpyxl-doc}
+openpyxl.
+\textit{openpyxl Documentation}.
+Disponible sur : \url{https://openpyxl.readthedocs.io/en/stable/}.
+Consulté en juin 2026.
+
+\bibitem{mysql-doc}
+Oracle.
+\textit{MySQL 8.4 Reference Manual}.
+Disponible sur : \url{https://dev.mysql.com/doc/refman/8.4/en/}.
+Consulté en juin 2026.
+
+\bibitem{prefect-doc}
+Prefect Technologies.
+\textit{Prefect Documentation}.
+Disponible sur : \url{https://docs.prefect.io/}.
+Consulté en juin 2026.
+
+\bibitem{playwright-doc}
+Microsoft.
+\textit{Playwright for Python Documentation}.
+Disponible sur : \url{https://playwright.dev/python/docs/intro}.
+Consulté en juin 2026.
+
+\bibitem{springboot-doc}
+VMware.
+\textit{Spring Boot Documentation}.
+Disponible sur : \url{https://docs.spring.io/spring-boot/index.html}.
+Consulté en juin 2026.
+
+\bibitem{powerbi-doc}
+Microsoft.
+\textit{Power BI Documentation}.
+Disponible sur : \url{https://learn.microsoft.com/en-us/power-bi/}.
+Consulté en juin 2026.
+
+\bibitem{react-doc}
+Meta.
+\textit{React Documentation}.
+Disponible sur : \url{https://react.dev/}.
+Consulté en juin 2026.
+
+\bibitem{reactnative-doc}
+Meta.
+\textit{React Native Documentation}.
+Disponible sur : \url{https://reactnative.dev/docs/getting-started}.
+Consulté en juin 2026.
+
+\bibitem{expo-doc}
+Expo.
+\textit{Expo Documentation}.
+Disponible sur : \url{https://docs.expo.dev/}.
+Consulté en juin 2026.
+
+\end{thebibliography}
+
 
 \appendix
-\input{annexes/annexes}
+% \input{annexes/annexes}
 
 \end{document}

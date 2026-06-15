@@ -13,6 +13,8 @@ import { LoginScreen } from "./src/screens/LoginScreen";
 import { MerchandiserExecutionScreen } from "./src/screens/MerchandiserExecutionScreen";
 import { StoreDetailScreen } from "./src/screens/StoreDetailScreen";
 import { StoreMapScreen } from "./src/screens/StoreMapScreen";
+import { SupervisorProfileScreen } from "./src/screens/SupervisorProfileScreen";
+import { TasksOverviewScreen } from "./src/screens/TasksOverviewScreen";
 import { styles } from "./src/styles/appStyles";
 
 export default function App() {
@@ -25,6 +27,10 @@ export default function App() {
   const [merchStoreFormatGroup, setMerchStoreFormatGroup] = useState("ALL");
   const [overview, setOverview] = useState(null);
   const [merchandisers, setMerchandisers] = useState([]);
+  const [selectedMerchandiser, setSelectedMerchandiser] = useState(null);
+  const [selectedMerchandiserStores, setSelectedMerchandiserStores] = useState([]);
+  const [selectedTaskVisit, setSelectedTaskVisit] = useState(null);
+  const [tasksOverviewBackScreen, setTasksOverviewBackScreen] = useState("merch");
   const [stores, setStores] = useState([]);
   const [selectedStore, setSelectedStore] = useState(null);
   const [selectedStoreDetail, setSelectedStoreDetail] = useState(null);
@@ -37,6 +43,10 @@ export default function App() {
     setActiveScreen("home");
     setOverview(null);
     setMerchandisers([]);
+    setSelectedMerchandiser(null);
+    setSelectedMerchandiserStores([]);
+    setSelectedTaskVisit(null);
+    setTasksOverviewBackScreen("merch");
     setStores([]);
     setSelectedStore(null);
     setSelectedStoreDetail(null);
@@ -145,6 +155,37 @@ export default function App() {
     loadMerchandisers(nextStoreFormatGroup);
   }
 
+  function handleOpenTasksOverview(storeVisit, merchandiser) {
+    setSelectedTaskVisit({ storeVisit, merchandiser });
+    setTasksOverviewBackScreen("merch");
+    setActiveScreen("tasksOverview");
+  }
+
+  function handleOpenStoreExecution(store) {
+    const visitId = store?.latestVisitId || store?.visitId;
+
+    if (!visitId) {
+      setSelectedStoreDetail(store);
+      setStoreDetailBackScreen("map");
+      setActiveScreen("storeDetail");
+      return;
+    }
+
+    setSelectedTaskVisit({
+      storeVisit: {
+        ...store,
+        visitId,
+        visitDate: store.latestVisitDate || store.visitDate,
+      },
+      merchandiser: {
+        username: store.merchandiserName || store.username,
+        name: store.merchandiserName || store.username,
+      },
+    });
+    setTasksOverviewBackScreen("map");
+    setActiveScreen("tasksOverview");
+  }
+
   useEffect(() => {
     if (supervisor) {
       loadData();
@@ -180,13 +221,27 @@ export default function App() {
             onEndDateChange={setEndDate}
             onRefresh={loadData}
             onLogout={handleLogout}
+            onOpenProfile={() => setActiveScreen("profile")}
             onOpenMerch={() => setActiveScreen("merch")}
             onOpenMap={() => setActiveScreen("map")}
+          />
+        ) : activeScreen === "profile" ? (
+          <SupervisorProfileScreen
+            supervisor={supervisor}
+            overview={overview}
+            stores={stores}
+            merchandisers={merchandisers}
+            onBack={() => setActiveScreen("home")}
           />
         ) : activeScreen === "merch" ? (
           <MerchandiserExecutionScreen
             supervisorId={supervisor.supervisorId}
             merchandisers={merchandisers}
+            selectedMerchandiser={selectedMerchandiser}
+            selectedMerchandiserStores={selectedMerchandiserStores}
+            onSelectedMerchandiserChange={setSelectedMerchandiser}
+            onSelectedMerchandiserStoresChange={setSelectedMerchandiserStores}
+            onOpenTasksOverview={handleOpenTasksOverview}
             overview={overview}
             isLoading={isLoading}
             error={error}
@@ -196,6 +251,14 @@ export default function App() {
             endDate={endDate}
             storeFormatGroup={merchStoreFormatGroup}
             onStoreFormatGroupChange={handleMerchStoreFormatGroupChange}
+          />
+        ) : activeScreen === "tasksOverview" ? (
+          <TasksOverviewScreen
+            supervisorId={supervisor.supervisorId}
+            visitId={selectedTaskVisit?.storeVisit?.visitId}
+            storeVisit={selectedTaskVisit?.storeVisit}
+            merchandiser={selectedTaskVisit?.merchandiser}
+            onBack={() => setActiveScreen(tasksOverviewBackScreen)}
           />
         ) : activeScreen === "storeDetail" ? (
           <StoreDetailScreen
@@ -215,6 +278,7 @@ export default function App() {
             error={error}
             selectedStore={selectedStore}
             onSelectStore={setSelectedStore}
+            onOpenStoreExecution={handleOpenStoreExecution}
             onOpenStoreDetail={(store) => {
               setSelectedStoreDetail(store);
               setStoreDetailBackScreen("map");
@@ -227,12 +291,12 @@ export default function App() {
       <View style={styles.tabs}>
         <TabButton
           label="Dashboard"
-          isActive={activeScreen === "home"}
+          isActive={activeScreen === "home" || activeScreen === "profile"}
           onPress={() => setActiveScreen("home")}
         />
         <TabButton
           label="Merch"
-          isActive={activeScreen === "merch"}
+          isActive={activeScreen === "merch" || activeScreen === "tasksOverview"}
           onPress={() => setActiveScreen("merch")}
         />
         <TabButton

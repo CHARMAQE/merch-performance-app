@@ -20,6 +20,7 @@ import com.smollan.backend.dto.mobile.MobileMerchandiserStoreResponse;
 import com.smollan.backend.dto.mobile.MobileStoreCoverageResponse;
 import com.smollan.backend.dto.mobile.MobileStoreDetailResponse;
 import com.smollan.backend.dto.mobile.MobileSupervisorResponse;
+import com.smollan.backend.dto.mobile.MobileTasksOverviewResponse;
 import com.smollan.backend.service.MobileService;
 
 @RestController
@@ -136,6 +137,16 @@ public class MobileController {
             @RequestParam(required = false) Integer day
     ) {
         return mobileService.getMobileStoreDetails(supervisorId, storeCode, year, month, day)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/visits/{visitId}/tasks-overview")
+    public ResponseEntity<MobileTasksOverviewResponse> getVisitTasksOverview(
+            @PathVariable Long visitId,
+            @RequestParam Long supervisorId
+    ) {
+        return mobileService.getVisitTasksOverview(supervisorId, visitId)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
