@@ -4,7 +4,7 @@ services:
     container_name: unilever-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Root@123}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in your .env file}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-unilever_db}
     ports:
       - "${MYSQL_PORT:-3306}:3306"
