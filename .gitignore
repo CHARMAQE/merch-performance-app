@@ -20,6 +20,10 @@ node_modules/
 .vscode/
 **/.vscode/
 .idea/
+.metals/
+**/.metals/
+.bloop/
+**/.bloop/
 
 # OS
 .DS_Store
@@ -50,6 +54,9 @@ data-engineering/debug_timeout.html
 data-engineering/debug_timeout.png
 data-engineering/debug_timeout_export.html
 data-engineering/debug_timeout_export.png
+
+# Large binary exports (not diffable, keep locally / share separately)
+BI/*.pbix
 
 # Local secrets
 .env

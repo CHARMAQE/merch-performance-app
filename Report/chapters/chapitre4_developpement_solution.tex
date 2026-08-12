@@ -1,7 +1,5 @@
 \chapter{Développement de la solution adoptée}
 
-\section{Introduction}
-
 Après avoir présenté la conception globale de la solution, ce chapitre décrit la mise en œuvre des principales composantes développées dans le cadre du projet. Il présente le pipeline Data Engineering, la structuration de la base MySQL, le moteur de validation, la couche Business Intelligence, le backend Spring Boot ainsi que les interfaces applicatives.
 
 La solution repose sur l’exploitation des fichiers \textit{Data Dump} et \textit{Coverage}, qui sont transformés en données structurées et centralisées dans la base \dbtable{unilever\_db}. Ces données alimentent ensuite les règles de validation, les tableaux de bord Power BI et les services applicatifs consommés par l’application mobile et le portail back-office.
@@ -496,8 +494,6 @@ Les interfaces développées permettent de valider les principaux usages attendu
 Certaines limites restent toutefois à prendre en compte. Le mécanisme d’authentification repose actuellement sur une connexion par email et mot de passe avec hachage BCrypt, sans gestion complète de jetons ou de sessions. De plus, la liste des superviseurs et des magasins affectés repose sur une structure prototype, en attendant la liste officielle du client Unilever.
 
 Les évolutions possibles concernent donc le renforcement de l’authentification, l’intégration de la liste officielle des affectations, l’ajout de filtres avancés et l’enrichissement du portail back-office par des exports ou des indicateurs de synthèse supplémentaires.
-
-\section{Conclusion}
 
 Ce chapitre a présenté la mise en œuvre technique de la solution adoptée, depuis l’ingestion des fichiers \textit{Data Dump} et \textit{Coverage} jusqu’à leur exploitation dans les différentes couches de la solution. Le pipeline Data Engineering a permis de transformer les exports Excel en données structurées dans la base MySQL \dbtable{unilever\_db}, tout en assurant la traçabilité des traitements.
 

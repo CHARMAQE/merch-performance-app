@@ -1,7 +1,5 @@
 \chapter{Conception globale de la solution}
 
-\section{Introduction}
-
 Après l’analyse de l’existant et des besoins identifiés, ce chapitre présente la conception globale de la solution proposée. Il vise à expliquer l’organisation générale de la solution data-driven mise en place pour centraliser, structurer et exploiter les données issues des opérations de merchandising terrain du projet Unilever.
 
 La solution repose sur une architecture organisée en plusieurs couches : acquisition des fichiers, traitement et orchestration des données, centralisation dans MySQL, restitution analytique, consultation orientée client et back-office interne de validation. Ce chapitre présente donc la vision générale de la solution, son architecture globale, ses couches fonctionnelles et les principaux choix technologiques retenus.
@@ -81,7 +79,7 @@ Ces choix s’appuient sur des outils adaptés au contexte du projet et sur leur
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.13\textwidth]{figures/technologies/Playwright_automation.png}
-    % \caption*{\textbf{Playwright}}
+    \caption{Playwright}
 \end{figure}
 
 Playwright a été retenu pour automatiser une partie de l’acquisition des fichiers depuis le portail Smollan. Il permet de reproduire certaines actions effectuées dans un navigateur, notamment l’accès au portail, l’application des filtres et le téléchargement des exports Excel. Dans le cadre du projet, il constitue un mode d’acquisition complémentaire à l’utilisation de fichiers déjà disponibles localement.
@@ -89,7 +87,7 @@ Playwright a été retenu pour automatiser une partie de l’acquisition des fic
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.20\textwidth]{figures/technologies/prefect.png}
-    % \caption*{\textbf{Prefect}}
+    \caption{Prefect}
 \end{figure}
 
 Prefect est utilisé pour orchestrer le pipeline de traitement des données. Son rôle est d’organiser l’exécution des différentes étapes, depuis la préparation des fichiers jusqu’au chargement des données et à l’exécution des règles de validation. Il permet ainsi de mieux structurer le flux de traitement, de suivre les exécutions et de faciliter la gestion des erreurs.
@@ -99,7 +97,7 @@ Prefect est utilisé pour orchestrer le pipeline de traitement des données. Son
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.1\textwidth]{figures/technologies/Python.png}
-    % \caption*{\textbf{Python}}
+    \caption{Python}
 \end{figure}
 
 Python constitue le langage principal utilisé pour la mise en place du pipeline de traitement. Il permet de lire les fichiers sources, d’appliquer les transformations nécessaires, de préparer les données structurées et d’alimenter la base centrale. Son utilisation est adaptée au contexte du projet, qui repose sur des fichiers Excel, des traitements tabulaires et des règles métier évolutives.
@@ -107,7 +105,7 @@ Python constitue le langage principal utilisé pour la mise en place du pipeline
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.2\textwidth]{figures/technologies/Pandas.png}
-    % \caption*{\textbf{pandas}}
+    \caption{pandas}
 \end{figure}
 
 La bibliothèque pandas est utilisée pour manipuler les données sous forme de tableaux. Elle permet de filtrer, nettoyer, harmoniser et transformer les données issues des fichiers \textit{Data Dump} et \textit{Coverage}. Elle joue un rôle central dans la préparation des données exploitables pour l’analyse, les indicateurs et les règles de validation.
@@ -115,7 +113,7 @@ La bibliothèque pandas est utilisée pour manipuler les données sous forme de 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.30\textwidth]{figures/technologies/openpyxl.png}
-    % \caption*{\textbf{openpyxl}}
+    \caption{openpyxl}
 \end{figure}
 
 openpyxl complète l’utilisation de pandas pour certaines opérations liées aux fichiers Excel. Cette bibliothèque permet d’interagir avec les classeurs Excel lorsque certaines manipulations nécessitent une lecture ou une gestion plus spécifique du format d’origine. Elle est donc utile dans un contexte où les données proviennent principalement d’exports opérationnels.
@@ -125,7 +123,7 @@ openpyxl complète l’utilisation de pandas pour certaines opérations liées a
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.16\textwidth]{figures/technologies/MySQL.png}
-    % \caption*{\textbf{MySQL}}
+    \caption{MySQL}
 \end{figure}
 
 MySQL a été retenu pour centraliser les données structurées du projet dans une base relationnelle. Cette base permet de regrouper les informations issues des fichiers sources, les données de référence, les tables analytiques et les résultats de validation. Elle constitue le socle commun utilisé par les tableaux de bord, les services applicatifs et les interfaces de consultation.
@@ -133,7 +131,7 @@ MySQL a été retenu pour centraliser les données structurées du projet dans u
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.12\textwidth]{figures/technologies/Power_BI.png}
-    % \caption*{\textbf{Power BI}}
+    \caption{Power BI}
 \end{figure}
 
 Power BI est utilisé pour la restitution analytique des données centralisées dans MySQL. Il permet de construire des dashboards orientés vers l’aide à la décision, notamment une vue exécutive de suivi national et une vue d’analyse de la performance d’un merchandiser GT. Ce choix répond au besoin de transformer les indicateurs opérationnels en constats lisibles pour le management.
@@ -147,7 +145,7 @@ Power BI est utilisé pour la restitution analytique des données centralisées 
     \raisebox{-0.1cm}{\includegraphics[height=1.6cm]{figures/technologies/Java.png}}
     \hspace{0.8cm}
     \raisebox{-0.1cm}{\includegraphics[height=1.2cm]{figures/technologies/spring-boot.png}}
-    % \caption*{\textbf{Java et Spring Boot}}
+    \caption{Java et Spring Boot}
 \end{figure}
 
 Java est utilisé pour le développement de la couche backend de la solution. Associé au framework Spring Boot, il permet de mettre en place des services applicatifs structurés et des APIs REST assurant l’accès aux données centralisées dans MySQL. Cette couche joue le rôle d’intermédiaire entre la base de données et les interfaces de restitution, notamment l’interface mobile Expo / React Native et le portail back-office React.
@@ -157,7 +155,7 @@ Java est utilisé pour le développement de la couche backend de la solution. As
     \raisebox{-0.1cm}{\includegraphics[height=1.5cm]{figures/technologies/swagger.png}}
     \hspace{0.8cm}
     \raisebox{-0.1cm}{\includegraphics[height=1.5cm]{figures/technologies/postman.png}}
-    % \caption*{\textbf{Swagger/OpenAPI et Postman}}
+    \caption{Swagger/OpenAPI et Postman}
 \end{figure}
 
 Swagger/OpenAPI et Postman ont été utilisés pour documenter et vérifier les APIs exposées par le backend. Swagger permet d’explorer les endpoints depuis une interface web, tandis que Postman permet de tester les requêtes HTTP, de vérifier les réponses retournées et de valider certains comportements importants de l’API.
@@ -166,7 +164,7 @@ Swagger/OpenAPI et Postman ont été utilisés pour documenter et vérifier les 
     \raisebox{-0.1cm}{\includegraphics[height=1.5cm]{figures/technologies/react_native.png}}
     \hspace{0.8cm}
     \raisebox{0.05cm}{\includegraphics[height=0.8cm]{figures/technologies/Expo_Go.png}}
-    % \caption*{\textbf{React Native et Expo Go}}
+    \caption{React Native et Expo Go}
 \end{figure}
 
 React Native, avec Expo Go, est utilisé pour l’interface mobile de consultation orientée client. Cette interface permet aux superviseurs ou utilisateurs côté client de consulter les magasins qui leur sont affectés, ainsi que certaines informations liées à l’exécution terrain. Ce choix facilite la mise en place d’une interface mobile progressive et adaptée à la consultation des données opérationnelles.
@@ -174,7 +172,7 @@ React Native, avec Expo Go, est utilisé pour l’interface mobile de consultati
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.12\textwidth]{figures/technologies/React.png}
-    % \caption*{\textbf{React}}
+    \caption{React}
 \end{figure}
 
 React est utilisé pour le portail back-office interne. Cette interface web permet de consulter les résultats de validation, notamment les situations détectées par les règles OSA, les contrôles GPS et les situations nécessitant une revue opérationnelle. Il permet de construire une interface interactive, adaptée au suivi interne et à l’évolution future du portail.
@@ -184,8 +182,6 @@ React est utilisé pour le portail back-office interne. Cette interface web perm
 L’ensemble des choix technologiques couvre les principales couches de la solution. Playwright et Prefect interviennent dans l’acquisition des fichiers et l’orchestration du pipeline. Python, pandas et openpyxl assurent le traitement des données issues des fichiers Excel, tandis que MySQL centralise les informations structurées.
 
 La restitution et l’exploitation des données reposent ensuite sur Power BI pour les tableaux de bord, Spring Boot pour les APIs REST, React Native avec Expo Go pour l’interface mobile et React pour le portail back-office. Swagger/OpenAPI et Postman complètent cette organisation en facilitant la documentation et la vérification des APIs.
-
-\section{Conclusion}
 
 Ce chapitre a présenté la conception globale de la solution, en décrivant sa vision générale, son architecture et la séparation de ses principales couches fonctionnelles. L’architecture retenue permet de passer des fichiers opérationnels \textit{Data Dump} et \textit{Coverage} vers une base centralisée, puis vers des restitutions adaptées au pilotage, à la consultation client et à la validation interne.
 

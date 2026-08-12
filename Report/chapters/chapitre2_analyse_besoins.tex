@@ -1,7 +1,5 @@
 \chapter{État de l’existant et cadre théorique}
 
-\section{Introduction}
-
 Ce chapitre présente l’état de l’existant relatif au suivi des opérations terrain du projet Unilever. Il introduit les notions métier nécessaires à la compréhension du contexte, notamment le merchandising terrain, les indicateurs de suivi opérationnel et l’exploitation des données issues des visites en magasin.
 
 Il décrit ensuite le processus actuel de reporting, les principales sources exploitées, ainsi que les limites rencontrées dans l’utilisation des fichiers \textit{Data Dump} et \textit{Coverage}. Cette analyse permet de dégager les besoins fonctionnels et techniques auxquels la solution proposée doit répondre.
@@ -339,8 +337,6 @@ La mise en œuvre de la solution nécessite une architecture capable de traiter 
 Le deuxième besoin concerne la centralisation des données dans une base MySQL, afin de stocker les informations opérationnelles, les réponses terrain, les tables de tâches et les indicateurs nécessaires aux tableaux de bord et aux interfaces applicatives. La solution doit également s’appuyer sur des API REST permettant la communication entre la base de données, l’application mobile et le portail back-office.
 
 Enfin, l’architecture doit rester évolutive afin de permettre l’ajout progressif de nouvelles règles de validation, de nouvelles vues analytiques, de nouvelles sources de données et de mécanismes d’authentification plus avancés.
-
-\section{Conclusion}
 
 Ce chapitre a présenté le cadre métier et théorique du projet, ainsi que le fonctionnement actuel du suivi des opérations terrain du projet Unilever. L’analyse a montré que les fichiers \textit{Data Dump} et \textit{Coverage} sont complémentaires, mais que leur exploitation reste dépendante d’exports Excel, de traitements séparés et d’un rapprochement manuel des informations.
 
